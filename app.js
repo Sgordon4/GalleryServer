@@ -1,5 +1,6 @@
 /*
 https://www.youtube.com/watch?v=pKd0Rpw7O48
+https://www.w3.org/Provider/Style/URI.html
 */
 
 var createError = require('http-errors');
@@ -11,6 +12,7 @@ const Joi = require('joi');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
+var filesRouter = require('./routes/files');
 
 var app = express();
 
@@ -26,6 +28,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
+app.use('/files', filesRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
