@@ -1,0 +1,55 @@
+-- Table: public.Account
+
+-- DROP TABLE IF EXISTS public."Account";
+
+CREATE TABLE IF NOT EXISTS public."Account"
+(
+    uid uuid NOT NULL,
+    "userName" character varying COLLATE pg_catalog."default" NOT NULL,
+    password character varying COLLATE pg_catalog."default" NOT NULL,
+    email character varying COLLATE pg_catalog."default" NOT NULL,
+    "displayName" character varying COLLATE pg_catalog."default" NOT NULL,
+    "creationDate" date NOT NULL,
+    CONSTRAINT "Account_pkey" PRIMARY KEY (uid)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public."Account"
+    OWNER to postgres;
+
+
+
+
+
+
+
+
+
+
+-- Table: public.File
+
+-- DROP TABLE IF EXISTS public."File";
+
+CREATE TABLE IF NOT EXISTS public."File"
+(
+    uid uuid NOT NULL,
+    accountid uuid NOT NULL,
+    name character varying COLLATE pg_catalog."default" NOT NULL,
+    parent uuid,
+    uri character varying COLLATE pg_catalog."default",
+    "fileType" character varying COLLATE pg_catalog."default" NOT NULL,
+    "dateCreated" date NOT NULL,
+    "dateUpdated" date NOT NULL,
+    CONSTRAINT "File_pkey" PRIMARY KEY (uid),
+    CONSTRAINT "accountID" FOREIGN KEY (accountid)
+        REFERENCES public."Account" (uid) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+        NOT VALID
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public."File"
+    OWNER to postgres;
