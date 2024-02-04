@@ -1,21 +1,21 @@
--- Table: public.Account
+-- Table: public.account
 
--- DROP TABLE IF EXISTS public."Account";
+-- DROP TABLE IF EXISTS public.account;
 
-CREATE TABLE IF NOT EXISTS public."Account"
+CREATE TABLE IF NOT EXISTS public.account
 (
-    uid uuid NOT NULL,
-    "userName" character varying COLLATE pg_catalog."default" NOT NULL,
+    accountuid uuid NOT NULL,
+    username character varying COLLATE pg_catalog."default" NOT NULL,
     password character varying COLLATE pg_catalog."default" NOT NULL,
     email character varying COLLATE pg_catalog."default" NOT NULL,
-    "displayName" character varying COLLATE pg_catalog."default" NOT NULL,
-    "creationDate" date NOT NULL,
-    CONSTRAINT "Account_pkey" PRIMARY KEY (uid)
+    displayname character varying COLLATE pg_catalog."default" NOT NULL,
+    creationdate timestamp without time zone NOT NULL,
+    CONSTRAINT "Account_pkey" PRIMARY KEY (accountuid)
 )
 
 TABLESPACE pg_default;
 
-ALTER TABLE IF EXISTS public."Account"
+ALTER TABLE IF EXISTS public.account
     OWNER to postgres;
 
 
@@ -27,29 +27,61 @@ ALTER TABLE IF EXISTS public."Account"
 
 
 
--- Table: public.File
+-- Table: public.file
 
--- DROP TABLE IF EXISTS public."File";
+-- DROP TABLE IF EXISTS public.file;
 
-CREATE TABLE IF NOT EXISTS public."File"
+CREATE TABLE IF NOT EXISTS public.file
 (
-    uid uuid NOT NULL,
-    accountid uuid NOT NULL,
-    name character varying COLLATE pg_catalog."default" NOT NULL,
-    parent uuid,
+    fileuid uuid NOT NULL,
+    accountuid uuid NOT NULL,
+    filename character varying COLLATE pg_catalog."default" NOT NULL,
+    parentuid uuid,
     uri character varying COLLATE pg_catalog."default",
-    "fileType" character varying COLLATE pg_catalog."default" NOT NULL,
-    "dateCreated" date NOT NULL,
-    "dateUpdated" date NOT NULL,
-    CONSTRAINT "File_pkey" PRIMARY KEY (uid),
-    CONSTRAINT "accountID" FOREIGN KEY (accountid)
-        REFERENCES public."Account" (uid) MATCH SIMPLE
+    filetype character varying COLLATE pg_catalog."default" NOT NULL,
+    creationdate timestamp without time zone NOT NULL,
+    lastaccessdate timestamp without time zone,
+    lastupdatedate timestamp without time zone,
+    CONSTRAINT "File_pkey" PRIMARY KEY (fileuid),
+    CONSTRAINT "accountID" FOREIGN KEY (accountuid)
+        REFERENCES public.account (accountuid) MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
-        NOT VALID
 )
 
 TABLESPACE pg_default;
 
-ALTER TABLE IF EXISTS public."File"
+ALTER TABLE IF EXISTS public.file
+    OWNER to postgres;
+
+
+
+
+
+
+
+
+
+
+-- Table: public.metadata
+
+-- DROP TABLE IF EXISTS public.metadata;
+
+CREATE TABLE IF NOT EXISTS public.metadata
+(
+    fileuid uuid NOT NULL,
+    userdefinedattr json,
+    tags json,
+    lastaccessdate timestamp without time zone,
+    lastupdatedate timestamp without time zone,
+    CONSTRAINT "Metadata_pkey" PRIMARY KEY (fileuid),
+    CONSTRAINT fileuid FOREIGN KEY (fileuid)
+        REFERENCES public.file (fileuid) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.metadata
     OWNER to postgres;
