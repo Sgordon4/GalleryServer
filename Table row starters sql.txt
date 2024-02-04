@@ -3,7 +3,7 @@ values ('40e6215d-b5c6-4896-987c-f30f3678f608', 'firstuser', 'password', 'firstu
 
 
 
-insert into file (fileuid, accountuid, name, parent, uri, filetype, creationdate, lastaccessdate, lastupdatedate)
+insert into file (fileuid, accountuid, filename, parentuid, uri, filetype, creationdate, lastaccessdate, lastupdatedate)
 values 
 ('16afde11-ed42-4769-992a-b82287335f2e', '40e6215d-b5c6-4896-987c-f30f3678f608', 'firstDirectory', null, 'nowhere@somewhere', 'Directory', '2024-02-04 12:00:00', null, null),
 ('517867bd-85df-4aa1-969e-53b99c8e4560', '40e6215d-b5c6-4896-987c-f30f3678f608', 'firstFile', '16afde11-ed42-4769-992a-b82287335f2e', 'nowherefile@somewhere', 'Regular', '2024-02-04 12:00:00', null, null);
