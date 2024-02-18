@@ -29,25 +29,6 @@ router.get('/accounts', function(req, res, next) {
 });
 
 
-router.get('/files', function(req, res, next) {
-    (async () => {
-        const client = await POOL.connect();
-  
-        try {
-            const {rows} = await client.query('SELECT * FROM file;');
-            console.log("FILES: ");
-            console.log(rows);
-            res.send(rows);
-        } 
-        catch (err) {
-            console.error(err);
-        } finally {
-            client.release();
-        }
-    })();
-});
-
-
 router.get('/metadata', function(req, res, next) {
     (async () => {
         const client = await POOL.connect();
