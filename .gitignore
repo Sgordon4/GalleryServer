@@ -1,2 +1,2 @@
 /node_modules
-/database/psconfig.env
+/database/pgconfig.env
