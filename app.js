@@ -14,7 +14,6 @@ var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/accounts');
 var metadataRouter = require('./routes/metadata');
 var filesRouter = require('./routes/files');
-var postgresRouter = require('./routes/postgres');
 
 var app = express();
 
@@ -32,7 +31,6 @@ app.use('/', indexRouter);
 app.use('/accounts', usersRouter);
 app.use('/files/metadata', metadataRouter);
 app.use('/files', filesRouter);
-app.use('/postgres', postgresRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

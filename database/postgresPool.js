@@ -22,11 +22,11 @@ PGPORT=5432
 
 //Grab pool properties from pgconfig.env 
 const pool = new Pool({
-  user: process.env.PGUSER,
-  host: process.env.PGHOST,
-  password: process.env.PGPASSWORD,
-  database: process.env.PGDATABASE,
-  port: process.env.PGPORT
+	user: process.env.PGUSER,
+	host: process.env.PGHOST,
+	password: process.env.PGPASSWORD,
+	database: process.env.PGDATABASE,
+	port: process.env.PGPORT
 });
 
 
