@@ -22,6 +22,9 @@ Return metadata of file
 */
 
 
+//-----------------------------------------------------------------------------
+// Get Requests
+//-----------------------------------------------------------------------------
 
 router.get('/', function(req, res, next) {
 	const query = req.query;
@@ -64,6 +67,54 @@ router.get('/:id', function(req, res, next) {
 
 			res.send('File info for id: ' + req.params.id
 				+"<br>File exists: "+rows[0].exists);
+		} 
+		catch (err) {
+			console.error(err);
+		} finally {
+			client.release();
+		}
+	})();
+});
+
+
+//-----------------------------------------------------------------------------
+// Post Requests
+//-----------------------------------------------------------------------------
+
+//Create a new file
+//Returns the new file's UID
+router.post('/', function(req, res, next) {
+	const body = req.body;
+
+	//Check that we have everything we need to create a new file
+	const requiredProps = ["accountuid", "filename", "parentuid", "filetype"]
+	const hasAllKeys = requiredProps.every(prop => Object.prototype.hasOwnProperty.call(body, prop));
+
+	//If we don't have all the required parameters...
+	if(!hasAllKeys) {
+		return res.status(422).send({
+			message: 'Post request must contain accountuid, filename, parentuid, and filetype'
+		});
+	}
+
+
+	(async () => {
+		const client = await POOL.connect();
+	
+		try {
+			//Insert a new file with a random UID, using the parameters from 'body'. Return the UID.
+			const sql = "insert into file(fileuid, accountuid, filename, parentuid, uri, filetype, "
+				+"creationdate, lastaccessdate, lastupdatedate)"
+				+"values (gen_random_uuid (), '"+body.accountuid+"', '"+body.filename+"', "
+				+body.parentuid+", null, '"+body.filetype+"', (now() at time zone 'utc'), null, null) "
+				+"returning fileuid;";
+			const {rows} = await client.query(sql);
+
+			console.log("File created!");
+			console.log(body);
+			console.log(rows[0]);
+
+			res.send(rows[0]);
 		} 
 		catch (err) {
 			console.error(err);

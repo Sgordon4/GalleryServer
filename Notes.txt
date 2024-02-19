@@ -1,0 +1,3 @@
+Database changes:
+File -
+Add filesize and filehash

@@ -10,11 +10,6 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 const Joi = require('joi');
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/accounts');
-var metadataRouter = require('./routes/metadata');
-var filesRouter = require('./routes/files');
-
 var app = express();
 
 // view engine setup
@@ -26,6 +21,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+var indexRouter = require('./routes/index');
+var usersRouter = require('./routes/accounts');
+var metadataRouter = require('./routes/metadata');
+var filesRouter = require('./routes/files');
 
 app.use('/', indexRouter);
 app.use('/accounts', usersRouter);
