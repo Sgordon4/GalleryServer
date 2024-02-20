@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS public.file
     filetype character varying COLLATE pg_catalog."default" NOT NULL,
     creationdate timestamp without time zone NOT NULL,
     lastaccessdate timestamp without time zone,
+    lastreaddate timestamp without time zone,
     lastupdatedate timestamp without time zone,
     CONSTRAINT "File_pkey" PRIMARY KEY (fileuid),
     CONSTRAINT "accountID" FOREIGN KEY (accountuid)
@@ -85,3 +86,19 @@ TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.metadata
     OWNER to postgres;
+
+
+
+
+
+
+
+
+
+
+
+
+insert into file(fileuid, accountuid, filename, parentuid, uri, filetype, creationdate, lastaccessdate, lastupdatedate)
+values (gen_random_uuid (), '40e6215d-b5c6-4896-987c-f30f3678f608', 'Sample file from Postman', null, null, 'Regular', (now() at time zone 'utc'), null, null)
+on conflict (accountuid, filename, parentuid) do nothing
+returning fileuid;

@@ -59,14 +59,25 @@ router.get('/:id', function(req, res, next) {
 
 	(async () => {
 	  const client = await POOL.connect();
-
 		try {
-			const {rows} = await client.query("SELECT EXISTS"
-				+"(SELECT 1 FROM file WHERE fileuid = '"+fileUID+"');");
-			console.log("Files queried!");
+			/* Sql without updating lastaccessdate
+			const sql = "select fileuid, filename, parentuid, filetype, creationdate, lastupdatedate "
+				+ "from file "
+				+ "where fileuid = '"+fileUID+"';";
+				*/
+			
+			const sql = "update file "
+				+"set lastaccessdate = (now() at time zone 'utc') "
+				+"where fileuid = '"+fileUID+"' "
+				+"returning fileuid, filename, parentuid, filetype, creationdate, lastupdatedate;";
+				
+			console.log("Selecting file with sql -");
+			console.log(sql);
+			const {rows} = await client.query(sql);
 
-			res.send('File info for id: ' + req.params.id
-				+"<br>File exists: "+rows[0].exists);
+			//Send the retreived data
+			console.log(rows[0]);
+			res.send(rows[0]);
 		} 
 		catch (err) {
 			console.error(err);
@@ -78,12 +89,12 @@ router.get('/:id', function(req, res, next) {
 
 
 //-----------------------------------------------------------------------------
-// Post Requests
+// Create Requests
 //-----------------------------------------------------------------------------
 
 //Create a new file
 //Returns the new file's UID
-router.post('/', function(req, res, next) {
+router.put('/', function(req, res, next) {
 	const body = req.body;
 
 	//Check that we have everything we need to create a new file
@@ -93,7 +104,7 @@ router.post('/', function(req, res, next) {
 	//If we don't have all the required parameters...
 	if(!hasAllKeys) {
 		return res.status(422).send({
-			message: 'Post request must contain accountuid, filename, parentuid, and filetype'
+			message: 'New file request must contain all of [accountuid, filename, parentuid, and filetype]'
 		});
 	}
 
@@ -101,20 +112,24 @@ router.post('/', function(req, res, next) {
 	(async () => {
 		const client = await POOL.connect();
 	
+		//TODO: Only returns ID when file is actually created, not on duplicate create requests.
+		//See https://stackoverflow.com/questions/34708509/how-to-use-returning-with-on-conflict-in-postgresql
 		try {
 			//Insert a new file with a random UID, using the parameters from 'body'. Return the UID.
 			const sql = "insert into file(fileuid, accountuid, filename, parentuid, uri, filetype, "
 				+"creationdate, lastaccessdate, lastupdatedate)"
 				+"values (gen_random_uuid (), '"+body.accountuid+"', '"+body.filename+"', "
 				+body.parentuid+", null, '"+body.filetype+"', (now() at time zone 'utc'), null, null) "
+				+"on conflict (accountuid, filename, parentuid) do nothing "
 				+"returning fileuid;";
+				
+			console.log("Creating file with sql -");
+			console.log(sql);
 			const {rows} = await client.query(sql);
 
-			console.log("File created!");
-			console.log(body);
-			console.log(rows[0]);
-
-			res.send(rows[0]);
+			//Send the retreived data
+			console.log(rows);
+			res.send(rows);
 		} 
 		catch (err) {
 			console.error(err);
