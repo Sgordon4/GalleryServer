@@ -60,20 +60,19 @@ router.get('/:id', function(req, res, next) {
 	(async () => {
 	  const client = await POOL.connect();
 		try {
-			/* Sql without updating lastaccessdate
-			const sql = "select fileuid, filename, parentuid, filetype, creationdate, lastupdatedate "
-				+ "from file "
-				+ "where fileuid = '"+fileUID+"';";
-				*/
+			const datesql = "update metadata "
+			+"set lasttableaccessdate = (now() at time zone 'utc') "
+			+"where fileuid = '"+fileUID+"';";
+			client.query(datesql);		//TODO does this block? Can't remember
+			console.log("lasttableaccessdate has been updated.");
+
+
+			const sql = "select uri from file "
+				+"where fileuid = '"+fileUID+"';";
+			const {rows} = await client.query(sql);
 			
-			const sql = "update file "
-				+"set lastaccessdate = (now() at time zone 'utc') "
-				+"where fileuid = '"+fileUID+"' "
-				+"returning fileuid, filename, parentuid, filetype, creationdate, lastupdatedate;";
-				
 			console.log("Selecting file with sql -");
 			console.log(sql);
-			const {rows} = await client.query(sql);
 
 			//Send the retreived data
 			console.log(rows[0]);
@@ -116,10 +115,9 @@ router.put('/', function(req, res, next) {
 		//See https://stackoverflow.com/questions/34708509/how-to-use-returning-with-on-conflict-in-postgresql
 		try {
 			//Insert a new file with a random UID, using the parameters from 'body'. Return the UID.
-			const sql = "insert into file(fileuid, accountuid, filename, parentuid, uri, filetype, "
-				+"creationdate, lastaccessdate, lastupdatedate)"
+			const sql = "insert into file(fileuid, accountuid, filename, parentuid, filetype, creationdate) "
 				+"values (gen_random_uuid (), '"+body.accountuid+"', '"+body.filename+"', "
-				+body.parentuid+", null, '"+body.filetype+"', (now() at time zone 'utc'), null, null) "
+				+body.parentuid+", '"+body.filetype+"', (now() at time zone 'utc')) "
 				+"on conflict (accountuid, filename, parentuid) do nothing "
 				+"returning fileuid;";
 				

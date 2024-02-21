@@ -5,11 +5,13 @@
 CREATE TABLE IF NOT EXISTS public.account
 (
     accountuid uuid NOT NULL,
+    email character varying COLLATE pg_catalog."default" NOT NULL,
     username character varying COLLATE pg_catalog."default" NOT NULL,
     password character varying COLLATE pg_catalog."default" NOT NULL,
-    email character varying COLLATE pg_catalog."default" NOT NULL,
     displayname character varying COLLATE pg_catalog."default" NOT NULL,
     creationdate timestamp without time zone NOT NULL,
+	lastaccessdate timestamp without time zone,
+    lastupdatedate timestamp without time zone,
     CONSTRAINT "Account_pkey" PRIMARY KEY (accountuid)
 )
 
@@ -21,9 +23,7 @@ ALTER TABLE IF EXISTS public.account
 
 
 
-
-
-
+//-------------------------------------------------------------------------------------------
 
 
 
@@ -34,15 +34,11 @@ ALTER TABLE IF EXISTS public.account
 CREATE TABLE IF NOT EXISTS public.file
 (
     fileuid uuid NOT NULL,
-    accountuid uuid NOT NULL,
     filename character varying COLLATE pg_catalog."default" NOT NULL,
-    parentuid uuid,
-    uri character varying COLLATE pg_catalog."default",
     filetype character varying COLLATE pg_catalog."default" NOT NULL,
-    creationdate timestamp without time zone NOT NULL,
-    lastaccessdate timestamp without time zone,
-    lastreaddate timestamp without time zone,
-    lastupdatedate timestamp without time zone,
+    uri character varying COLLATE pg_catalog."default",
+    parentuid uuid,
+    accountuid uuid NOT NULL,
     CONSTRAINT "File_pkey" PRIMARY KEY (fileuid),
     CONSTRAINT "accountID" FOREIGN KEY (accountuid)
         REFERENCES public.account (accountuid) MATCH SIMPLE
@@ -56,11 +52,12 @@ ALTER TABLE IF EXISTS public.file
     OWNER to postgres;
 
 
+ALTER TABLE public.file ADD CONSTRAINT file_accountuid_filename_parentuid_key 
+	UNIQUE NULLS NOT DISTINCT (filename, parentuid, accountuid);
 
 
 
-
-
+//-------------------------------------------------------------------------------------------
 
 
 
@@ -73,8 +70,11 @@ CREATE TABLE IF NOT EXISTS public.metadata
     fileuid uuid NOT NULL,
     userdefinedattr json,
     tags json,
-    lastaccessdate timestamp without time zone,
-    lastupdatedate timestamp without time zone,
+    creationdate timestamp without time zone NOT NULL,
+    lasttableaccessdate timestamp without time zone,
+    lasttableupdatedate timestamp without time zone,
+    lastfileaccessdate timestamp without time zone,
+    lastfileupdatedate timestamp without time zone,
     CONSTRAINT "Metadata_pkey" PRIMARY KEY (fileuid),
     CONSTRAINT fileuid FOREIGN KEY (fileuid)
         REFERENCES public.file (fileuid) MATCH SIMPLE
@@ -89,11 +89,22 @@ ALTER TABLE IF EXISTS public.metadata
 
 
 
+//-------------------------------------------------------------------------------------------
 
 
 
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO gallery;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO gallery;
 
 
+
+//-------------------------------------------------------------------------------------------
+
+
+
+INSERT INTO public.account
+(accountuid, email, username, password, displayname, creationdate)
+VALUES('12345678-abcd-4896-987c-f30f3678f608'::uuid, 'firstuser@gmail.com', 'firstuser', 'password', 'firstusername', '2024-02-04 12:00:00.000');
 
 
 

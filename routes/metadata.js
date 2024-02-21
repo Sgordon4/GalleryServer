@@ -14,7 +14,7 @@ router.get('/', function(req, res, next) {
 		const client = await POOL.connect();
 	
 		try {
-			const {rows} = await client.query('SELECT * FROM metadata;');
+			const {rows} = await client.query('SELECT * FROM file;');
 			console.log("Metadata queried!");
 
 			res.send(rows);
@@ -38,7 +38,7 @@ router.get('/:id', function(req, res, next) {
 	(async () => {
 		const client = await POOL.connect();
 		try {
-			const sql = "update metadata "
+			const sql = "update file "
 				+"set lastaccessdate = (now() at time zone 'utc') "
 				+"where fileuid = '"+fileUID+"' "
 				+"returning fileuid, userdefinedattr, tags;";
