@@ -5,6 +5,53 @@ const {POOL} = require("../database/postgresPool");
 
 
 
+function updatelasttableaccessdate(fileUID, client) {
+	const datesql = "insert into "
+		+"metadata (fileuid, lasttableaccessdate, creationdate) "
+		+"values ('"+fileUID+"', (now() at time zone 'utc'), (now() at time zone 'utc')) "
+		+"on conflict (fileuid) DO UPDATE "
+		+"SET lasttableaccessdate=EXCLUDED.lasttableaccessdate;";
+	console.log("Updating lasttableaccessdate with sql -");
+	console.log(datesql);
+	client.query(datesql);	//Don't await, we don't care about the response
+}
+
+function updatelasttableupdatedate(fileuid, client) {
+	const datesql = "insert into "
+		+"metadata (fileuid, lasttableupdatedate, creationdate) "
+		+"values ('"+fileUID+"', (now() at time zone 'utc'), (now() at time zone 'utc')) "
+		+"on conflict (fileuid) DO UPDATE "
+		+"SET lasttableupdatedate=EXCLUDED.lasttableupdatedate;";
+	console.log("Updating lasttableupdatedate with sql -");
+	console.log(datesql);
+	client.query(datesql);	//Don't await, we don't care about the response
+}
+
+function updatelastfileaccessdate(fileuid, client) {
+	const datesql = "insert into "
+		+"metadata (fileuid, lastfileaccessdate, creationdate) "
+		+"values ('"+fileUID+"', (now() at time zone 'utc'), (now() at time zone 'utc')) "
+		+"on conflict (fileuid) DO UPDATE "
+		+"SET lastfileaccessdate=EXCLUDED.lastfileaccessdate;";
+	console.log("Updating lastfileaccessdate with sql -");
+	console.log(datesql);
+	client.query(datesql);	//Don't await, we don't care about the response
+}
+
+function updatelastfileupdatedate(fileuid, client) {
+	const datesql = "insert into "
+		+"metadata (fileuid, lastfileupdatedate, creationdate) "
+		+"values ('"+fileUID+"', (now() at time zone 'utc'), (now() at time zone 'utc')) "
+		+"on conflict (fileuid) DO UPDATE "
+		+"SET lastfileupdatedate=EXCLUDED.lastfileupdatedate;";
+	console.log("Updating lastfileupdatedate with sql -");
+	console.log(datesql);
+	client.query(datesql);	//Don't await, we don't care about the response
+}
+
+
+
+
 router.get('/', function(req, res, next) {
 	const query = req.query;
 	console.log("Queries: ");
@@ -14,7 +61,7 @@ router.get('/', function(req, res, next) {
 		const client = await POOL.connect();
 	
 		try {
-			const {rows} = await client.query('SELECT * FROM file;');
+			const {rows} = await client.query('SELECT * FROM metadata;');
 			console.log("Metadata queried!");
 
 			res.send(rows);
@@ -38,18 +85,29 @@ router.get('/:id', function(req, res, next) {
 	(async () => {
 		const client = await POOL.connect();
 		try {
-			const sql = "update file "
-				+"set lastaccessdate = (now() at time zone 'utc') "
-				+"where fileuid = '"+fileUID+"' "
-				+"returning fileuid, userdefinedattr, tags;";
-
-			console.log("Selecting metadata with sql -");
+			//Get the metadata for this fileuid
+			const sql = "select * from metadata "
+				+"where fileuid = '"+fileUID+"';";
+			console.log("Geting metadata with sql -");
 			console.log(sql);
-			const {rows} = await client.query(sql);
+			const {metadata} = (await client.query(sql))[0];
+
+
+			//Update lasttableaccessdate
+			const datesql = "insert into "
+				+"metadata (fileuid, lasttableaccessdate, creationdate) "
+				+"values ("+fileUID+", (now() at time zone 'utc'), (now() at time zone 'utc')) "
+				+"on conflict (fileuid) DO UPDATE "
+				+"SET lasttableaccessdate=EXCLUDED.lasttableaccessdate, "
+				+"creationDate=(now() at time zone 'utc');";
+			console.log("Updating lasttableaccessdate with sql -");
+			console.log(datesql);
+			client.query(datesql);	//Don't await, we don't care about the response
+
 
 			//Send the retreived data
-			console.log(rows[0]);
-			res.send(rows[0]);
+			console.log(metadata);
+			res.send(metadata);
 		}
 		catch (err) {
 			console.error(err);
@@ -58,6 +116,9 @@ router.get('/:id', function(req, res, next) {
 		}
 	})();
 });
+
+
+
 
 
 //-----------------------------------------------------------------------------
@@ -93,10 +154,12 @@ router.post('/:id', function(req, res, next) {
 		try {
 			//Update a file's metadata, using the parameters from 'body'.
 			const sql = "insert into "
-				+"metadata (fileuid, "+toUpdate.toString()+", lastupdatedate) "
-				+"values ('"+fileUID+"', "+updates.toString()+", (now() at time zone 'utc')) "
+				+"metadata (fileuid, "+toUpdate.toString()+", lasttableupdatedate, creationdate) "
+				+"values ('"+fileUID+"', "+updates.toString()+", "
+				+"(now() at time zone 'utc'), (now() at time zone 'utc'))) "
 				+"on conflict (fileuid) DO UPDATE "
-				+"SET"+excludedHelper.toString()+", lastupdatedate=EXCLUDED.lastupdatedate;";
+				+"SET"+excludedHelper.toString()+", lasttableupdatedate=EXCLUDED.lasttableupdatedate, "
+				+"creationDate=(now() at time zone 'utc');";
 
 			console.log("Updating metadata with sql -");
 			console.log(sql);
@@ -116,3 +179,7 @@ router.post('/:id', function(req, res, next) {
 
 
 module.exports = router;
+exports.updateTableAccessDate = updatelasttableaccessdate;
+exports.updateTableUpdateDate = updatelasttableupdatedate
+exports.updateFileAccessDate = updatelastfileaccessdate;
+exports.updateFileUpdateDate = updatelastfileupdatedate;

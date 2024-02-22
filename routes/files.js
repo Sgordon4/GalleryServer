@@ -1,5 +1,7 @@
 var express = require('express');
 var router = express.Router();
+const metadata = require('./metadata');
+const { updateTableAccessDate, updateTableUpdateDate, updateFileAccessDate, updateFileUpdateDate } = require('./metadata.js')
 
 const {POOL} = require("../database/postgresPool");
 
@@ -26,6 +28,7 @@ Return metadata of file
 // Get Requests
 //-----------------------------------------------------------------------------
 
+//TODO Maybe require a body param with accountid or something? Sending only files for that account?
 router.get('/', function(req, res, next) {
 	const query = req.query;
 	console.log("Queries: ");
@@ -60,24 +63,23 @@ router.get('/:id', function(req, res, next) {
 	(async () => {
 	  const client = await POOL.connect();
 		try {
-			/*
-			const datesql = "update metadata "
-			+"set lasttableaccessdate = (now() at time zone 'utc') "
-			+"where fileuid = '"+fileUID+"';";
-			client.query(datesql);		//TODO does this block? Can't remember
-			console.log("lasttableaccessdate has been updated.");
-			*/
-
+			//Get the file data's location
 			const sql = "select uri from file "
 				+"where fileuid = '"+fileUID+"';";
-			const {rows} = await client.query(sql);
-			
-			console.log("Selecting file with sql -");
+			console.log("Geting file uri with sql -");
 			console.log(sql);
+			const {uri} = await client.query(sql);
+
+
+			updateFileAccessDate(fileUID, client);
+
+
+			//TODO Get the actual file data
+			const fileData = uri;
 
 			//Send the retreived data
-			console.log(rows[0]);
-			res.send(rows[0]);
+			console.log(fileData);
+			res.send(fileData);
 		} 
 		catch (err) {
 			console.error(err);
@@ -121,10 +123,22 @@ router.put('/', function(req, res, next) {
 				+body.parentuid+", '"+body.filetype+"', (now() at time zone 'utc')) "
 				+"on conflict (accountuid, filename, parentuid) do nothing "
 				+"returning fileuid;";
-				
 			console.log("Creating file with sql -");
 			console.log(sql);
 			const {rows} = await client.query(sql);
+
+
+			//Update creationdate
+			const datesql = "insert into "
+				+"metadata (fileuid, creationdate) "
+				+"values ('"+fileUID+"', (now() at time zone 'utc')) "
+				+"on conflict (fileuid) DO UPDATE "
+				+"SET creationdate=EXCLUDED.creationdate;";
+			console.log("Updating creationdate with sql -");
+			console.log(datesql);
+			client.query(datesql);	//Don't await, we don't care about the response
+
+			
 
 			//Send the retreived data
 			console.log(rows);
