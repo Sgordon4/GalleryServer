@@ -23,7 +23,7 @@ ALTER TABLE IF EXISTS public.account
 
 
 
-//-------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------
 
 
 
@@ -35,10 +35,11 @@ CREATE TABLE IF NOT EXISTS public.file
 (
     fileuid uuid NOT NULL,
     filename character varying COLLATE pg_catalog."default" NOT NULL,
-    filetype character varying COLLATE pg_catalog."default" NOT NULL,
     uri character varying COLLATE pg_catalog."default",
     parentuid uuid,
     accountuid uuid NOT NULL,
+	isdirectory boolean,
+	issymboliclink boolean,
     CONSTRAINT "File_pkey" PRIMARY KEY (fileuid),
     CONSTRAINT "accountID" FOREIGN KEY (accountuid)
         REFERENCES public.account (accountuid) MATCH SIMPLE

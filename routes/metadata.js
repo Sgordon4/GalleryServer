@@ -50,7 +50,7 @@ router.get('/:id', function(req, res, next) {
 			//Send the retreived data
 			console.log(rows[0]);
 			res.send(rows[0]);
-		} 
+		}
 		catch (err) {
 			console.error(err);
 		} finally {

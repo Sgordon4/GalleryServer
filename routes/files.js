@@ -60,12 +60,13 @@ router.get('/:id', function(req, res, next) {
 	(async () => {
 	  const client = await POOL.connect();
 		try {
+			/*
 			const datesql = "update metadata "
 			+"set lasttableaccessdate = (now() at time zone 'utc') "
 			+"where fileuid = '"+fileUID+"';";
 			client.query(datesql);		//TODO does this block? Can't remember
 			console.log("lasttableaccessdate has been updated.");
-
+			*/
 
 			const sql = "select uri from file "
 				+"where fileuid = '"+fileUID+"';";
@@ -115,7 +116,7 @@ router.put('/', function(req, res, next) {
 		//See https://stackoverflow.com/questions/34708509/how-to-use-returning-with-on-conflict-in-postgresql
 		try {
 			//Insert a new file with a random UID, using the parameters from 'body'. Return the UID.
-			const sql = "insert into file(fileuid, accountuid, filename, parentuid, filetype, creationdate) "
+			const sql = "insert into file(fileuid, accountuid, filename, parentuid, filetype) "
 				+"values (gen_random_uuid (), '"+body.accountuid+"', '"+body.filename+"', "
 				+body.parentuid+", '"+body.filetype+"', (now() at time zone 'utc')) "
 				+"on conflict (accountuid, filename, parentuid) do nothing "
