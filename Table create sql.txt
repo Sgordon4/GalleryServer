@@ -21,8 +21,73 @@ ALTER TABLE IF EXISTS public.account
     OWNER to postgres;
 
 
+//-------------------------------------------------------------------------------------------
 
 
+
+-- Table: public.file
+
+-- DROP TABLE IF EXISTS public.file;
+
+CREATE TABLE IF NOT EXISTS public.file
+(
+    fileuid uuid NOT NULL,
+    filename character varying COLLATE pg_catalog."default" NOT NULL,
+    uri character varying COLLATE pg_catalog."default",
+    parentuid uuid,
+    accountuid uuid NOT NULL,
+	isdirectory boolean,
+	issymboliclink boolean,
+	userdefinedattr json,
+    tags json,
+	creationdate timestamp without time zone NOT NULL,
+    CONSTRAINT "File_pkey" PRIMARY KEY (fileuid),
+    CONSTRAINT "accountID" FOREIGN KEY (accountuid)
+        REFERENCES public.account (accountuid) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.file
+    OWNER to postgres;
+
+
+ALTER TABLE public.file ADD CONSTRAINT file_accountuid_filename_parentuid_key 
+	UNIQUE NULLS NOT DISTINCT (filename, parentuid, accountuid);
+
+
+
+//-------------------------------------------------------------------------------------------
+
+
+
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO gallery;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO gallery;
+
+
+
+//-------------------------------------------------------------------------------------------
+
+
+
+INSERT INTO public.account
+(accountuid, email, username, password, displayname, creationdate)
+VALUES('12345678-abcd-4896-987c-f30f3678f608'::uuid, 'firstuser@gmail.com', 'firstuser', 'password', 'firstusername', '2024-02-04 12:00:00.000');
+
+
+
+
+insert into file(fileuid, accountuid, filename, parentuid, uri, filetype, creationdate, lastaccessdate, lastupdatedate)
+values (gen_random_uuid (), '40e6215d-b5c6-4896-987c-f30f3678f608', 'Sample file from Postman', null, null, 'Regular', (now() at time zone 'utc'), null, null)
+on conflict (accountuid, filename, parentuid) do nothing
+returning fileuid;
+
+
+
+//-------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------
 
 
@@ -91,26 +156,3 @@ ALTER TABLE IF EXISTS public.metadata
 
 
 //-------------------------------------------------------------------------------------------
-
-
-
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO gallery;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO gallery;
-
-
-
-//-------------------------------------------------------------------------------------------
-
-
-
-INSERT INTO public.account
-(accountuid, email, username, password, displayname, creationdate)
-VALUES('12345678-abcd-4896-987c-f30f3678f608'::uuid, 'firstuser@gmail.com', 'firstuser', 'password', 'firstusername', '2024-02-04 12:00:00.000');
-
-
-
-
-insert into file(fileuid, accountuid, filename, parentuid, uri, filetype, creationdate, lastaccessdate, lastupdatedate)
-values (gen_random_uuid (), '40e6215d-b5c6-4896-987c-f30f3678f608', 'Sample file from Postman', null, null, 'Regular', (now() at time zone 'utc'), null, null)
-on conflict (accountuid, filename, parentuid) do nothing
-returning fileuid;
