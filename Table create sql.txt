@@ -78,10 +78,10 @@ VALUES('12345678-abcd-4896-987c-f30f3678f608'::uuid, 'firstuser@gmail.com', 'fir
 
 
 
-
-insert into file(fileuid, accountuid, filename, parentuid, uri, creationdate)
-values (gen_random_uuid (), '12345678-abcd-4896-987c-f30f3678f608', 'Sample file from Postman', null, null, (now() at time zone 'utc'))
-on conflict (accountuid, filename, parentuid) do nothing
+insert into file(fileuid, filename, uri, parentuid, accountuid, isdirectory, issymboliclink, creationdate) values 
+(gen_random_uuid (), 'Starter file', 'file@nowhere.com', null, '12345678-abcd-4896-987c-f30f3678f608', false, false, (now() at time zone 'utc')),
+(gen_random_uuid (), 'Starter directory', 'directory@nowhere.com', null, '12345678-abcd-4896-987c-f30f3678f608', true, false, (now() at time zone 'utc'))
+on conflict (filename, parentuid, accountuid) do nothing
 returning fileuid;
 
 

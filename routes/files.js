@@ -1,7 +1,5 @@
 var express = require('express');
 var router = express.Router();
-const metadata = require('./metadata');
-const { updateTableAccessDate, updateTableUpdateDate, updateFileAccessDate, updateFileUpdateDate } = require('./metadata.js')
 
 const {POOL} = require("../database/postgresPool");
 
