@@ -24,14 +24,6 @@ Each file object includes (fileuid, tags).
 
 */
 
-//-----------------------------------------------------------------------------
-// Get Attributes
-//
-// Return attributes for the provided accounts/parents or 1 fileuid. 
-// Returns json in the form of accountuid { parentuid { file, file, ... }}.
-// Each file object includes (fileuid, userdefinedattr).
-//-----------------------------------------------------------------------------
-
 
 //Basic sql builder, needed for simple use so I made it simple
 //TODO Maybe switch this to knex or something, idk
@@ -63,25 +55,48 @@ function sqlBuilder(columns, table, constraints) {
 }
 
 
-router.get('/', function(req, res, next) {
-	const columns = ["fileuid, userdefinedattr"];
-	const table = "file";
-	var constraints = {};
+//-----------------------------------------------------------------------------
+// Get Attributes
+//
+// Return attributes for the provided accounts/parents or 1 fileuid. 
+// Returns json in the form of accountuid { parentuid { file, file, ... }}.
+// Each file object includes (fileuid, userdefinedattr).
+//-----------------------------------------------------------------------------
 
+
+router.get('/', function(req, res, next) {
 	//Get the parameters from the request
 	const query = req.query;
 	console.log("Queries: ");
 	console.log(query);
 
-	var accountuids = query.accountuid;
-	var parentuids = query.parentuid;
-	var fileuids = query.fileuid;
+	var conditions = [];
+	var values = [];
 
-	if(accountuids != null) constraints["accountuid"] = accountuids;
-	if(parentuids != null) constraints["parentuid"] = parentuids;
-	if(fileuids != null) constraints["fileuid"] = fileuids;
+	if(query.accountuid !== undefined) {
+		conditions.push("accountuid = ?");
+		values.push(query.accountuid);
+	}
+	if(query.parentuid !== undefined) {
+		conditions.push("parentuid = ?");
+		values.push(query.parentuid);
+	}
+	if(query.fileuid !== undefined) {
+		conditions.push("fileuid = ?");
+		values.push(query.fileuid);
+	}
 
-	const sql = sqlBuilder(columns, table, constraints);
+	//Combine the conditions into a usable where query
+	const where = conditions.length > 0 ? " WHERE "+conditions.join(" AND ") : "";
+
+	
+	sql  = "SELECT ";
+	sql += "fileuid, userdefinedattr ";
+	sql += "FROM ";
+	sql += "file ";
+	sql += where;
+	sql += ";";
+
 
 	(async () => {
 		const client = await POOL.connect();
@@ -89,7 +104,7 @@ router.get('/', function(req, res, next) {
 		try {
 			console.log("Geting metadata with sql -");
 			console.log(sql);
-			const {rows} = await client.query(sql);
+			const {rows} = await client.query(sql, values);
 
 			res.send(rows);
 		} 
