@@ -43,10 +43,16 @@ function getFileAttrs(accountuids, parentuids, fileuids) {
 		const client = await POOL.connect();
 	
 		try {
-			const sql = "select fileuid, userdefinedattr from file "
-				if(accountuids || parentuids || fileuids) { 
+			const sql = "select fileuid, userdefinedattr from file ";
 
-				}
+			//If any parameters were passed...
+			if(accountuids || parentuids || fileuids) { 
+				sql += "where ";
+				if(accountuids) 
+					sql += "accountuid in "+accountuids
+
+			}
+			sql += ";";
 				+"where fileuid = '"+fileUID+"';";
 			console.log("Geting file uri with sql -");
 			console.log(sql);
