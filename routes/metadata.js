@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 
 const {POOL} = require("../database/postgresPool");
+const { string } = require('joi');
 
 /*
 Planned API structure:
@@ -10,16 +11,16 @@ Return  list of attributes for the provided accounts/parents or 1 fileuid.
 Returns json in the form of accountuid { parentuid { file, file, ... }}.
 Each file object includes (fileuid, userdefinedattr).
 
-../files/attributes?account&parentUID&...			Need to include scaling (max 100, etc).
-../files/attributes/fileuid
+../files/metadata?account&parentUID&...				Need to include scaling (max 100, etc).
+../files/metadata/fileuid
 
 
 Return  list of tags for the provided accounts/parents or 1 fileuid. 
 Returns json in the form of accountuid { parentuid { file, file, ... }}.
 Each file object includes (fileuid, tags).
 
-../files/tags?account&parentUID&...					Need to include scaling (max 100, etc).
-../files/tags/fileuid
+../files/metadata/tags?account&parentUID&...		Need to include scaling (max 100, etc).
+../files/metadata/tags/fileuid
 
 */
 
@@ -32,60 +33,63 @@ Each file object includes (fileuid, tags).
 //-----------------------------------------------------------------------------
 
 
-function getFileAttrs(accountuids, parentuids, fileuids) {
-	//Build a list of where string conditions out of existing parameters
+//Basic sql builder, needed for simple use so I made it simple
+//TODO Maybe switch this to knex or something, idk
+function sqlBuilder(columns, table, constraints) {
+	//Typechecks
+	if(!Array.isArray(columns) || columns.length === 0) throw new TypeError("Columns must be a non-empty array!");
+	if(!(typeof table === "string")) throw new TypeError("Table must be a string!");
+	if(!(typeof constraints === "object")) throw new TypeError("Constraints must be an object!");
+
+
 	var conditions = [];
-
-	//Make sure any existing values are in array form for ease of use with sql's "in"
-	var accountuids = accountuids ? [].concat(accountuids) : null;
-    var parentuids = parentuids ? [].concat(parentuids) : null;
-    var fileuids = fileuids ? [].concat(fileuids) : null;
-
-	//Add existing values to the conditions list
-	if(accountuids != null) 
-		conditions.push("accountuid in ("+accountuids.toString()+")");
-	if(parentuids != null) 
-		conditions.push("parentuid in ("+parentuids.toString()+")");
-	if(fileuids != null) 
-		conditions.push("fileuid in ("+fileuids.toString()+")");
+	for(const[key, val] of Object.entries(constraints)) {
+		val = [].concat(val);	//Make sure values are in array form for ease of use with sql's "in"
+		conditions.push(key+" in ("+val.toString()+")");		//Add value(s) to conditions list
+	}
 	
 	//Combine the conditions into a usable where query
 	const where = conditions.length > 0 ? " WHERE "+conditions.join(" AND ") : "";
 
-
-	(async () => {
-		const client = await POOL.connect();
 	
-		try {
-			const sql = "select fileuid, userdefinedattr from file";
-			sql += where;
-			sql += ";";
-			console.log("Geting file attributes with sql -");
-			console.log(sql);
-		} 
-		catch (err) {
-			console.error(err);
-		} finally {
-			client.release();
-		}
-	})();
+	sql  = "SELECT ";
+	sql += columns.toString();
+	sql += " FROM ";
+	sql += table;
+	sql += where;
+	sql += ";";
 
-
-	
+	return sql;
 }
 
 
 router.get('/', function(req, res, next) {
+	const columns = ["fileuid, userdefinedattr"];
+	const table = "file";
+	var constraints = {};
+
+	//Get the parameters from the request
 	const query = req.query;
 	console.log("Queries: ");
 	console.log(query);
+
+	var accountuids = query.accountuid;
+	var parentuids = query.parentuid;
+	var fileuids = query.fileuid;
+
+	if(accountuids != null) constraints["accountuid"] = accountuids;
+	if(parentuids != null) constraints["parentuid"] = parentuids;
+	if(fileuids != null) constraints["fileuid"] = fileuids;
+
+	const sql = sqlBuilder(columns, table, constraints);
 
 	(async () => {
 		const client = await POOL.connect();
 	
 		try {
-			const {rows} = await client.query('SELECT * FROM metadata;');
-			console.log("Metadata queried!");
+			console.log("Geting metadata with sql -");
+			console.log(sql);
+			const {rows} = await client.query(sql);
 
 			res.send(rows);
 		} 
