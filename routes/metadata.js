@@ -33,28 +33,34 @@ Each file object includes (fileuid, tags).
 
 
 function getFileAttrs(accountuids, parentuids, fileuids) {
-	//Make sure any existing values are in array form for ease of use
+	//Build a list of where string conditions out of existing parameters
+	var conditions = [];
+
+	//Make sure any existing values are in array form for ease of use with sql's "in"
 	var accountuids = accountuids ? [].concat(accountuids) : null;
     var parentuids = parentuids ? [].concat(parentuids) : null;
     var fileuids = fileuids ? [].concat(fileuids) : null;
+
+	//Add existing values to the conditions list
+	if(accountuids != null) 
+		conditions.push("accountuid in ("+accountuids.toString()+")");
+	if(parentuids != null) 
+		conditions.push("parentuid in ("+parentuids.toString()+")");
+	if(fileuids != null) 
+		conditions.push("fileuid in ("+fileuids.toString()+")");
+	
+	//Combine the conditions into a usable where query
+	const where = conditions.length > 0 ? " WHERE "+conditions.join(" AND ") : "";
 
 
 	(async () => {
 		const client = await POOL.connect();
 	
 		try {
-			const sql = "select fileuid, userdefinedattr from file ";
-
-			//If any parameters were passed...
-			if(accountuids || parentuids || fileuids) { 
-				sql += "where ";
-				if(accountuids) 
-					sql += "accountuid in "+accountuids
-
-			}
+			const sql = "select fileuid, userdefinedattr from file";
+			sql += where;
 			sql += ";";
-				+"where fileuid = '"+fileUID+"';";
-			console.log("Geting file uri with sql -");
+			console.log("Geting file attributes with sql -");
 			console.log(sql);
 		} 
 		catch (err) {
