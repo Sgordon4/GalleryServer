@@ -7,18 +7,13 @@ const {POOL} = require("../database/postgresPool");
 /*
 Planned API structure:
 
-Return list of files for a given account/parent file. Need to include scaling (max 100, etc)
-../files?account&parentUID&...
+Return  list of files for the provided accounts/parents or 1 fileuid, including their basic attributes. 
+Returns json in the form of accountuid { parentuid { file, file, ... }}. 
+Each file object includes (fileuid, filename, isdirectory, issymboliclink, creationdate).
 
-Return contents of file
+../files?account&parentUID&...						Need to include scaling (max 100, etc).
 ../files/fileUID
 
-
-Return list of metadata of files for a given account/parent file. Need to include scaling (max 100, etc)
-../files/metadata?account&parentUID&...
-
-Return metadata of file
-../files/metadata/fileUID
 */
 
 

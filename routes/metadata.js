@@ -6,22 +6,61 @@ const {POOL} = require("../database/postgresPool");
 /*
 Planned API structure:
 
-Return userdefinedattr for a given account/parent file. Need to include scaling (max 100, etc)
-../files/attributes?account&parentUID&...
+Return  list of attributes for the provided accounts/parents or 1 fileuid. 
+Returns json in the form of accountuid { parentuid { file, file, ... }}.
+Each file object includes (fileuid, userdefinedattr).
 
-Return userdefinedattr for a given file uuid.
+../files/attributes?account&parentUID&...			Need to include scaling (max 100, etc).
 ../files/attributes/fileuid
 
 
-Return tags for a given account/parent file. Need to include scaling (max 100, etc)
-../files/tags?account&parentUID&...
+Return  list of tags for the provided accounts/parents or 1 fileuid. 
+Returns json in the form of accountuid { parentuid { file, file, ... }}.
+Each file object includes (fileuid, tags).
 
-Return tags for a given file uuid.
+../files/tags?account&parentUID&...					Need to include scaling (max 100, etc).
 ../files/tags/fileuid
 
 */
 
+//-----------------------------------------------------------------------------
+// Get Attributes
+//
+// Return attributes for the provided accounts/parents or 1 fileuid. 
+// Returns json in the form of accountuid { parentuid { file, file, ... }}.
+// Each file object includes (fileuid, userdefinedattr).
+//-----------------------------------------------------------------------------
 
+
+function getFileAttrs(accountuids, parentuids, fileuids) {
+	//Make sure any existing values are in array form for ease of use
+	var accountuids = accountuids ? [].concat(accountuids) : null;
+    var parentuids = parentuids ? [].concat(parentuids) : null;
+    var fileuids = fileuids ? [].concat(fileuids) : null;
+
+
+	(async () => {
+		const client = await POOL.connect();
+	
+		try {
+			const sql = "select fileuid, userdefinedattr from file "
+				if(accountuids || parentuids || fileuids) { 
+
+				}
+				+"where fileuid = '"+fileUID+"';";
+			console.log("Geting file uri with sql -");
+			console.log(sql);
+		} 
+		catch (err) {
+			console.error(err);
+		} finally {
+			client.release();
+		}
+	})();
+
+
+	
+}
 
 
 router.get('/', function(req, res, next) {
@@ -45,6 +84,9 @@ router.get('/', function(req, res, next) {
 		}
 	})();
 });
+
+
+
 
 
 router.get('/:id', function(req, res, next) {
