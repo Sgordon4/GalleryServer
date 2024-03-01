@@ -37,6 +37,83 @@ Each file object includes (fileuid, tags).
 // Each file object includes (fileuid, userdefinedattr).
 //-----------------------------------------------------------------------------
 
+router.get('/tags/', function(req, res, next) {
+	//Get the parameters from the request
+	const query = req.query;
+	console.log("Queries: ");
+	console.log(query);
+
+	//Grab any conditions we care about from the parameters sent with the request 
+	var conditions = [];
+	if(query.accountuid !== undefined) conditions.push("accountuid = '"+query.accountuid+"'");
+	if(query.parentuid !== undefined) conditions.push("parentuid = '"+query.parentuid+"'");
+	if(query.fileuid !== undefined) conditions.push("fileuid = '"+query.fileuid+"'");
+
+	//Combine the conditions into a usable where query
+	const where = conditions.length > 0 ? " WHERE "+conditions.join(" AND ") : "";
+
+
+	var sql  = "SELECT fileuid, tags FROM file ";
+	sql += where;
+	sql += ";";
+
+
+	(async () => {
+		const client = await POOL.connect();
+	
+		try {
+			console.log("Geting tags with sql -");
+			console.log(sql);
+			const {rows} = await client.query(sql);
+
+			res.send(rows);
+		} 
+		catch (err) {
+			console.error(err);
+		} finally {
+			client.release();
+		}
+	})();
+});
+
+
+router.get('/tags/:id', function(req, res, next) {
+	const query = req.query;
+	console.log("Queries: ");
+	console.log(query);
+
+	const fileUID = req.params.id;
+
+	var sql  = "SELECT fileuid, tags FROM file ";
+	sql += "WHERE fileuid = '"+fileUID+"';";
+
+
+	(async () => {
+		const client = await POOL.connect();
+	
+		try {
+			console.log("Geting tags with sql -");
+			console.log(sql);
+			const {rows} = await client.query(sql);
+
+			res.send(rows);
+		} 
+		catch (err) {
+			console.error(err);
+		} finally {
+			client.release();
+		}
+	})();
+});
+
+
+
+
+
+
+
+
+
 router.get('/', function(req, res, next) {
 	//Get the parameters from the request
 	const query = req.query;
@@ -77,9 +154,6 @@ router.get('/', function(req, res, next) {
 });
 
 
-
-
-
 router.get('/:id', function(req, res, next) {
 	const query = req.query;
 	console.log("Queries: ");
@@ -108,8 +182,6 @@ router.get('/:id', function(req, res, next) {
 		}
 	})();
 });
-
-
 
 
 
