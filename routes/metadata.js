@@ -50,7 +50,7 @@ router.get('/tags/', function(req, res, next) {
 	if(query.fileuid !== undefined) conditions.push("fileuid = '"+query.fileuid+"'");
 
 	//Combine the conditions into a usable where query
-	const where = conditions.length > 0 ? " WHERE "+conditions.join(" AND ") : "";
+	const where = conditions.length > 0 ? "WHERE "+conditions.join(" AND ") : "";
 
 
 	var sql  = "SELECT fileuid, tags FROM file ";
@@ -127,7 +127,7 @@ router.get('/', function(req, res, next) {
 	if(query.fileuid !== undefined) conditions.push("fileuid = '"+query.fileuid+"'");
 
 	//Combine the conditions into a usable where query
-	const where = conditions.length > 0 ? " WHERE "+conditions.join(" AND ") : "";
+	const where = conditions.length > 0 ? "WHERE "+conditions.join(" AND ") : "";
 
 
 	var sql  = "SELECT fileuid, userdefinedattr FROM file ";

@@ -5,6 +5,11 @@ const {POOL} = require("../database/postgresPool");
 
 
 /*
+TODO
+Add compression
+Remove sql injection vulnerabilities
+
+
 Planned API structure:
 
 Return  list of files for the provided accounts/parents or 1 fileuid, including their basic attributes. 
@@ -27,12 +32,28 @@ router.get('/', function(req, res, next) {
 	console.log("Queries: ");
 	console.log(query);
 
+	//Grab any conditions we care about from the parameters sent with the request 
+	var conditions = [];
+	if(query.accountuid !== undefined) conditions.push("accountuid = '"+query.accountuid+"'");
+	if(query.parentuid !== undefined) conditions.push("parentuid = '"+query.parentuid+"'");
+	if(query.fileuid !== undefined) conditions.push("fileuid = '"+query.fileuid+"'");
+
+	//Combine the conditions into a usable where query
+	const where = conditions.length > 0 ? "WHERE "+conditions.join(" AND ") : "";
+
+
+	var sql  = "SELECT fileuid, filename, isdirectory, issymboliclink, accountuid, parentuid, creationdate FROM file ";
+	sql += where;
+	sql += ";";
+	
+
 	(async () => {
 	  const client = await POOL.connect();
 
 		try {
-			const {rows} = await client.query('SELECT * FROM file;');
-			console.log("Files queried!");
+			console.log("Selecting files with sql -");
+			console.log(sql);
+			const {rows} = await client.query(sql);
 
 			res.send(rows);
 		} 
