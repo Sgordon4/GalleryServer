@@ -53,10 +53,7 @@ router.get('/', function(req, res, next) {
 	const where = conditions.length > 0 ? " WHERE "+conditions.join(" AND ") : "";
 
 
-	sql  = "SELECT ";
-	sql += "fileuid, userdefinedattr ";
-	sql += "FROM ";
-	sql += "file ";
+	var sql  = "SELECT fileuid, userdefinedattr FROM file ";
 	sql += where;
 	sql += ";";
 
@@ -90,33 +87,20 @@ router.get('/:id', function(req, res, next) {
 
 	const fileUID = req.params.id;
 
+	var sql  = "SELECT fileuid, userdefinedattr FROM file ";
+	sql += "WHERE fileuid = '"+fileUID+"';";
+
+
 	(async () => {
 		const client = await POOL.connect();
+	
 		try {
-			//Get the metadata for this fileuid
-			const sql = "select * from metadata "
-				+"where fileuid = '"+fileUID+"';";
 			console.log("Geting metadata with sql -");
 			console.log(sql);
-			const {metadata} = (await client.query(sql))[0];
+			const {rows} = await client.query(sql);
 
-
-			//Update lasttableaccessdate
-			const datesql = "insert into "
-				+"metadata (fileuid, lasttableaccessdate, creationdate) "
-				+"values ("+fileUID+", (now() at time zone 'utc'), (now() at time zone 'utc')) "
-				+"on conflict (fileuid) DO UPDATE "
-				+"SET lasttableaccessdate=EXCLUDED.lasttableaccessdate, "
-				+"creationDate=(now() at time zone 'utc');";
-			console.log("Updating lasttableaccessdate with sql -");
-			console.log(datesql);
-			client.query(datesql);	//Don't await, we don't care about the response
-
-
-			//Send the retreived data
-			console.log(metadata);
-			res.send(metadata);
-		}
+			res.send(rows);
+		} 
 		catch (err) {
 			console.error(err);
 		} finally {
@@ -133,7 +117,58 @@ router.get('/:id', function(req, res, next) {
 // Update Requests
 //-----------------------------------------------------------------------------
 
+//TODO Update json through postgres rather than overwriting
+
 //Update file metadata by ID
+router.post('/:id', function(req, res, next) {
+	const fileUID = req.params.id;
+	const body = req.body;
+
+	//Get the intersection of columns available to update and those sent in the request
+	const bodyParams = Object.keys(body);
+	const availableColumns = ["userdefinedattr", "tags"];
+	
+	var toUpdate = availableColumns.filter(column => bodyParams.includes(column));
+
+	//If we don't have any of the required parameters...
+	if(toUpdate.length <= 0) {
+		return res.status(422).send({
+			message: 'Metadata update request must contain any of [userdefinedattr, tags]'
+		});
+	}
+
+
+	var updates = toUpdate.map(column => column+" = '"+body[column]+"'");
+
+	var sql = "UPDATE file "
+		+"SET "+updates.concat(", ")
+		+" WHERE fileuid = '"+fileUID+"';";
+
+
+	(async () => {
+		const client = await POOL.connect();
+		try {
+			console.log("Updating metadata with sql -");
+			console.log(sql);
+			const {rows} = await client.query(sql);
+			
+			//Send the retreived data
+			console.log(rows);
+			res.send("Metadata updated!");
+		} 
+		catch (err) {
+			console.error(err);
+		} finally {
+			client.release();
+		}
+	})();
+});
+
+
+module.exports = router;
+
+
+/*
 router.post('/:id', function(req, res, next) {
 	const fileUID = req.params.id;
 	const body = req.body;
@@ -184,6 +219,4 @@ router.post('/:id', function(req, res, next) {
 		}
 	})();
 });
-
-
-module.exports = router;
+*/
