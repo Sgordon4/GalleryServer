@@ -70,6 +70,7 @@ router.get('/tags/', function(req, res, next) {
 		} 
 		catch (err) {
 			console.error(err);
+			res.send(err);
 		} finally {
 			client.release();
 		}
@@ -100,6 +101,7 @@ router.get('/tags/:id', function(req, res, next) {
 		} 
 		catch (err) {
 			console.error(err);
+			res.send(err);
 		} finally {
 			client.release();
 		}
@@ -147,6 +149,7 @@ router.get('/', function(req, res, next) {
 		} 
 		catch (err) {
 			console.error(err);
+			res.send(err);
 		} finally {
 			client.release();
 		}
@@ -177,6 +180,7 @@ router.get('/:id', function(req, res, next) {
 		} 
 		catch (err) {
 			console.error(err);
+			res.send(err);
 		} finally {
 			client.release();
 		}
@@ -230,6 +234,7 @@ router.post('/:id', function(req, res, next) {
 		} 
 		catch (err) {
 			console.error(err);
+			res.send(err);
 		} finally {
 			client.release();
 		}
