@@ -5,6 +5,10 @@ const {POOL} = require("../database/postgresPool");
 const { string } = require('joi');
 
 /*
+---- WARNING ----
+This API is vulnerable to sql injection. It needs to be converted to use postgres parameterization.
+
+
 Planned API structure:
 
 Return  list of attributes for the provided accounts/parents or 1 fileuid. 
@@ -25,36 +29,6 @@ Each file object includes (fileuid, tags).
 */
 
 
-//Basic sql builder, needed for simple use so I made it simple
-//TODO Maybe switch this to knex or something, idk
-function sqlBuilder(columns, table, constraints) {
-	//Typechecks
-	if(!Array.isArray(columns) || columns.length === 0) throw new TypeError("Columns must be a non-empty array!");
-	if(!(typeof table === "string")) throw new TypeError("Table must be a string!");
-	if(!(typeof constraints === "object")) throw new TypeError("Constraints must be an object!");
-
-
-	var conditions = [];
-	for(const[key, val] of Object.entries(constraints)) {
-		val = [].concat(val);	//Make sure values are in array form for ease of use with sql's "in"
-		conditions.push(key+" in ("+val.toString()+")");		//Add value(s) to conditions list
-	}
-	
-	//Combine the conditions into a usable where query
-	const where = conditions.length > 0 ? " WHERE "+conditions.join(" AND ") : "";
-
-	
-	sql  = "SELECT ";
-	sql += columns.toString();
-	sql += " FROM ";
-	sql += table;
-	sql += where;
-	sql += ";";
-
-	return sql;
-}
-
-
 //-----------------------------------------------------------------------------
 // Get Attributes
 //
@@ -63,33 +37,22 @@ function sqlBuilder(columns, table, constraints) {
 // Each file object includes (fileuid, userdefinedattr).
 //-----------------------------------------------------------------------------
 
-
 router.get('/', function(req, res, next) {
 	//Get the parameters from the request
 	const query = req.query;
 	console.log("Queries: ");
 	console.log(query);
 
+	//Grab any conditions we care about from the parameters sent with the request 
 	var conditions = [];
-	var values = [];
-
-	if(query.accountuid !== undefined) {
-		conditions.push("accountuid = ?");
-		values.push(query.accountuid);
-	}
-	if(query.parentuid !== undefined) {
-		conditions.push("parentuid = ?");
-		values.push(query.parentuid);
-	}
-	if(query.fileuid !== undefined) {
-		conditions.push("fileuid = ?");
-		values.push(query.fileuid);
-	}
+	if(query.accountuid !== undefined) conditions.push("accountuid = '"+query.accountuid+"'");
+	if(query.parentuid !== undefined) conditions.push("parentuid = '"+query.parentuid+"'");
+	if(query.fileuid !== undefined) conditions.push("fileuid = '"+query.fileuid+"'");
 
 	//Combine the conditions into a usable where query
 	const where = conditions.length > 0 ? " WHERE "+conditions.join(" AND ") : "";
 
-	
+
 	sql  = "SELECT ";
 	sql += "fileuid, userdefinedattr ";
 	sql += "FROM ";
@@ -104,7 +67,7 @@ router.get('/', function(req, res, next) {
 		try {
 			console.log("Geting metadata with sql -");
 			console.log(sql);
-			const {rows} = await client.query(sql, values);
+			const {rows} = await client.query(sql);
 
 			res.send(rows);
 		} 
