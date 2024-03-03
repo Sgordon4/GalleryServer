@@ -67,6 +67,17 @@ router.get('/', function(req, res, next) {
 });
 
 
+const IBM = require('ibm-cos-sdk');
+
+var config = {
+    endpoint: 'https://s3.us-east.cloud-object-storage.appdomain.cloud/gallery-cloud-object-storage/',
+    apiKeyId: '<api-key>',
+    serviceInstanceId: '<resource-instance-id>',
+    signatureVersion: 'iam',
+};
+
+var cos = new IBM.S3(config);
+
 
 router.get('/:id', function(req, res, next) {
 	const query = req.query;
@@ -86,8 +97,17 @@ router.get('/:id', function(req, res, next) {
 			const {uri} = await client.query(sql);
 
 
+
+			var isIBMCloud = uri.startsWith("https://s3.us-east.cloud-object-storage.appdomain.cloud/gallery-cloud-object-storage/");
+
+			if(isIBMCloud) {
+				//https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-node
+			}
+
+
 			//TODO Get the actual file data
 			const fileData = uri;
+
 
 			//Send the retreived data
 			console.log(fileData);
