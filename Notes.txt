@@ -3,4 +3,5 @@ File -
 Add filesize and filehash
 
 
-https://s3.us-east.cloud-object-storage.appdomain.cloud/gallery-cloud-object-storage/smiley.png
+Test encryption:
+Q5YSTvVkggjA9dTOzcsUxNwde2TGSGX3VS2MPGTjhIvL

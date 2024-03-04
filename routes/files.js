@@ -2,12 +2,17 @@ var express = require('express');
 var router = express.Router();
 
 const {POOL} = require("../database/postgresPool");
+const {IBMCOS, IBMCOSBucket} = require("../storage/IBMCOS");
+
 
 
 /*
 TODO
 Add compression
 Remove sql injection vulnerabilities
+
+Nice example for async vs then, helps me refresh
+https://stackoverflow.com/a/70206098
 
 
 Planned API structure:
@@ -67,60 +72,25 @@ router.get('/', function(req, res, next) {
 });
 
 
-const IBM = require('ibm-cos-sdk');
 
-var config = {
-    endpoint: 'https://s3.us-east.cloud-object-storage.appdomain.cloud/gallery-cloud-object-storage/',
-    apiKeyId: '<api-key>',
-    serviceInstanceId: '<resource-instance-id>',
-    signatureVersion: 'iam',
-};
-
-var cos = new IBM.S3(config);
-
-
-router.get('/:id', function(req, res, next) {
-	const query = req.query;
-	console.log("Queries: ");
-	console.log(query);
-
+router.get('/:id', async function(req, res, next) {
 	const fileUID = req.params.id;
+	console.log(`Reading file with UID=${fileUID}`);
 
-	(async () => {
-	  const client = await POOL.connect();
-		try {
-			//Get the file data's location
-			const sql = "select uri from file "
-				+"where fileuid = '"+fileUID+"';";
-			console.log("Geting file uri with sql -");
-			console.log(sql);
-			const {uri} = await client.query(sql);
+	//Get the file contents from the IBM bucket, using the UID as the name
+	try {
+		const data = await IBMCOS.getObject({ Bucket: IBMCOSBucket, Key: fileUID }).promise();
+		if (data == null) 
+			throw new Error(`File data returned null for FileUID = ${fileUID}`);
 
-
-
-			var isIBMCloud = uri.startsWith("https://s3.us-east.cloud-object-storage.appdomain.cloud/gallery-cloud-object-storage/");
-
-			if(isIBMCloud) {
-				//https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-node
-			}
-
-
-			//TODO Get the actual file data
-			const fileData = uri;
-
-
-			//Send the retreived data
-			console.log(fileData);
-			res.send(fileData);
-		} 
-		catch (err) {
-			console.error(err);
-			res.send(err);
-		} finally {
-			client.release();
-		}
-	})();
+		//Send the file
+		res.send(data.Body);
+	} catch (e) {
+		console.error(`Error reading file: ${e.code} - ${e.message}\n`);
+		res.sendStatus(404);
+	}
 });
+
 
 
 //-----------------------------------------------------------------------------
