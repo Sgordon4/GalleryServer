@@ -99,7 +99,7 @@ router.get('/:id', async function(req, res, next) {
 
 //Create a new file
 //Returns the new file's UID
-router.put('/:id', function(req, res, next) {
+router.put('/', function(req, res, next) {
 	const body = req.body;
 
 	//Check that we have everything we need to create a new file
@@ -128,19 +128,58 @@ router.put('/:id', function(req, res, next) {
 				+"returning fileuid;";
 			console.log("Creating file with sql -");
 			console.log(sql);
-			const {rows} = await client.query(sql);			
-
-			//Send the retreived data
-			console.log(rows);
-			res.send(rows);
+			
+			var newFileUID = await client.query(sql);	
+			console.log("EEEEEEEEE"+newFileUID);		
+			res.send(newFileUID);
 		} 
-		catch (err) {
-			console.error(err);
-			res.send(err);
+		catch (e) {
+			console.error(`Error creating file in database: ${e.message}\n`);
+			res.sendStatus(404);
 		} finally {
 			client.release();
 		}
+
+
+		/*
+		//Create a new file in the IBM Cloud
+		try {
+			cos.putObject({
+				Bucket: IBMCOSBucket,
+				Key: newFileUID
+				//,Body: null
+			}).promise()
+			.then(() => {
+				console.log(`Item: ${itemName} created!`);
+			})
+			.catch((e) => {
+				console.error(`ERROR: ${e.code} - ${e.message}\n`);
+			});
+		} catch (e) {
+			console.error(`Error creating file in cos: ${e.code} - ${e.message}\n`);
+			res.sendStatus(404);
+		}
+		*/
+
+
 	})();
+});
+
+
+router.put('/:id', function(req, res, next) {
+	const fileUID = req.params.id;
+	console.log(`Writing file with UID=${fileUID}`);
+
+	//Check that we have everything we need to write to the file
+	const requiredProps = ["data"]
+	const hasAllKeys = requiredProps.every(prop => Object.prototype.hasOwnProperty.call(body, prop));
+
+	//If we don't have all the required parameters...
+	if(!hasAllKeys) {
+		return res.status(422).send({
+			message: 'Write file request must contain a data parameter!'
+		});
+	}
 });
 
 
