@@ -13,20 +13,26 @@ The file ibmconfig.env is included in the .gitignore so as to not expose critica
  and must be recreated per-system. The file should be created in this format:
 
 IBMENDPOINT=IBM public COS endpoint, not including the bucket
-IBMAPIKEYID=apikey of the service credentials for the desired bucket
 IBMSERVICEINSTANCEID=GUID of the storage object, not the bucket
-IBMSIGNATUREVERSION=iam
 IBMBUCKET=name of the bucket
+IBMAPIKEYID=apikey of the service credentials for the desired bucket
+IBMHMACACCESSKEYID=hmac access key for the service credentials
+IBMHMACSECRETACCESSKEY=hmac secret key for the service credentials
+IBMSIGNATUREVERSION=v4, required version for hmac credential url signing 
 */
+
 
 var config = {
     endpoint: process.env.IBMENDPOINT,
-    apiKeyId: process.env.IBMAPIKEYID,
     serviceInstanceId: process.env.IBMSERVICEINSTANCEID,
+    apiKeyId: process.env.IBMAPIKEYID,
+	accessKeyId: process.env.IBMHMACACCESSKEYID,
+	secretAccessKey:process.env.IBMHMACSECRETACCESSKEY,
     signatureVersion: process.env.IBMSIGNATUREVERSION,
 };
 
 const IBMCOSBucket = process.env.IBMBUCKET;
+
 
 var cos = new IBM.S3(config);
 

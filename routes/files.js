@@ -75,20 +75,18 @@ router.get('/', function(req, res, next) {
 
 router.get('/:id', async function(req, res, next) {
 	const fileUID = req.params.id;
-	console.log(`Reading file with UID=${fileUID}`);
+	console.log(`Generating signed url for file with UID=${fileUID}`);
 
-	//Get the file contents from the IBM bucket, using the UID as the name
-	try {
-		const data = await IBMCOS.getObject({ Bucket: IBMCOSBucket, Key: fileUID }).promise();
-		if (data == null) 
-			throw new Error(`File data returned null for FileUID = ${fileUID}`);
-
-		//Send the file
-		res.send(data.Body);
-	} catch (e) {
-		console.error(`Error reading file: ${e.code} - ${e.message}\n`);
-		res.sendStatus(404);
-	}
+	IBMCOS.getSignedUrlPromise('getObject', { 
+		Bucket: IBMCOSBucket, 
+		Key: fileUID, 
+		Expires: 3600 //seconds
+	})
+	.then(url => {
+		console.log(`Signed url generated: \n${url}`);
+		res.redirect(url);
+		//res.send(url);
+	});
 });
 
 
