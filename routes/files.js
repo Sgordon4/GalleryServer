@@ -14,6 +14,9 @@ Remove sql injection vulnerabilities
 Nice example for async vs then, helps me refresh
 https://stackoverflow.com/a/70206098
 
+Post redirect 
+https://stackoverflow.com/questions/38810114/node-js-with-express-how-to-redirect-a-post-request
+
 
 Planned API structure:
 
