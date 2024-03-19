@@ -174,7 +174,7 @@ router.put('/:id', function(req, res, next) {
 	
 		try {
 			//Check that a file with this UID exists in the database
-			const sql = `SELECT EXISTS(SELECT 1 FROM file WHERE fileuid='${fileUID} AND deleted != TRUE')`;
+			const sql = `SELECT EXISTS(SELECT 1 FROM file WHERE fileuid='${fileUID}' AND deleted != TRUE)`;
 			console.log(`Checking that file exists with sql:\n${sql}`);
 			var exists = await client.query(sql);
 			var exists = exists.rows[0].exists;
@@ -189,7 +189,7 @@ router.put('/:id', function(req, res, next) {
 			IBMCOS.getSignedUrlPromise('putObject', { 
 				Bucket: IBMCOSBucket, 
 				Key: fileUID, 
-				Expires: 60 //seconds
+				Expires: 600 //seconds
 			})
 			.then(url => {
 				console.log(`Signed url generated: \n${url}`);
