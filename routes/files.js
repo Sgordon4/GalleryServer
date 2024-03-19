@@ -18,6 +18,11 @@ Post redirect
 https://stackoverflow.com/questions/38810114/node-js-with-express-how-to-redirect-a-post-request
 
 
+IBM COS NodeJS API
+https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-node
+https://ibm.github.io/ibm-cos-sdk-js/AWS/S3.html
+
+
 Planned API structure:
 
 Return  list of files for the provided accounts/parents or 1 fileuid, including their basic attributes. 
@@ -83,12 +88,12 @@ router.get('/:id', async function(req, res, next) {
 	IBMCOS.getSignedUrlPromise('getObject', { 
 		Bucket: IBMCOSBucket, 
 		Key: fileUID, 
-		Expires: 3600 //seconds
+		//Expires: 3600 //seconds
+		Expires: 30 //seconds
 	})
 	.then(url => {
 		console.log(`Signed url generated: \n${url}`);
 		res.redirect(url);
-		//res.send(url);
 	});
 });
 
@@ -167,11 +172,16 @@ router.put('/', function(req, res, next) {
 });
 
 
+
+
 router.put('/:id', function(req, res, next) {
 	const fileUID = req.params.id;
 	console.log(`Writing file with UID=${fileUID}`);
 
+
+	/*
 	//Check that we have everything we need to write to the file
+	const body = req.body;
 	const requiredProps = ["data"]
 	const hasAllKeys = requiredProps.every(prop => Object.prototype.hasOwnProperty.call(body, prop));
 
@@ -181,6 +191,21 @@ router.put('/:id', function(req, res, next) {
 			message: 'Write file request must contain a data parameter!'
 		});
 	}
+	*/
+
+	console.log(`Generating signed put url for file with UID=${fileUID}`);
+
+	IBMCOS.getSignedUrlPromise('putObject', { 
+		Bucket: IBMCOSBucket, 
+		Key: fileUID, 
+		Expires: 30 //seconds
+	})
+	.then(url => {
+		console.log(`Signed url generated: \n${url}`);
+		res.status(307).redirect(url);
+		//res.send(url);
+	});
+	
 });
 
 
