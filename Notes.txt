@@ -5,3 +5,21 @@ Add filesize and filehash
 
 Test encryption:
 Q5YSTvVkggjA9dTOzcsUxNwde2TGSGX3VS2MPGTjhIvL
+
+
+
+
+
+Gallery:
+- FileUID
+- Account
+- Parent
+- FileName
+- isDirectory
+- isSymbolicLink
+- LastUpdatedDate
+- Get File
+- Get Tags
+- Get Metadata
+- Put Tags
+- Put Metadata

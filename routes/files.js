@@ -41,8 +41,10 @@ Each file object includes (fileuid, filename, isdirectory, issymboliclink, creat
 
 //TODO Maybe require a body param with accountid or something? Sending only files for that account?
 router.get('/', function(req, res, next) {
+	console.log(`\nAttempting to fetch all files`);
+
 	const query = req.query;
-	console.log("Queries: ");
+	console.log(`Available queries:`);
 	console.log(query);
 
 	//Grab any conditions we care about from the parameters sent with the request 
@@ -50,22 +52,25 @@ router.get('/', function(req, res, next) {
 	if(query.accountuid !== undefined) conditions.push("accountuid = '"+query.accountuid+"'");
 	if(query.parentuid !== undefined) conditions.push("parentuid = '"+query.parentuid+"'");
 	if(query.fileuid !== undefined) conditions.push("fileuid = '"+query.fileuid+"'");
+	console.log(`Accepted conditions:`);
+	console.log(conditions);
+
 
 	//Combine the conditions into a usable where query
-	const where = conditions.length > 0 ? "WHERE "+conditions.join(" AND ") : "";
+	const where = conditions.length > 0 ? " WHERE "+conditions.join(" AND ") : "";
 
 
-	var sql  = "SELECT fileuid, filename, isdirectory, issymboliclink, accountuid, parentuid, creationdate, deleted FROM file ";
+	var sql  = "SELECT fileuid, filename, isdirectory, issymboliclink, "
+			+"accountuid, parentuid, creationdate, deleted FROM file";
 	sql += where;
-	sql += ";";
+	sql += " LIMIT 500;";
 	
 
 	(async () => {
 	  const client = await POOL.connect();
 
 		try {
-			console.log("Selecting files with sql -");
-			console.log(sql);
+			console.log(`Selecting files with sql:\n${sql}`);
 			const {rows} = await client.query(sql);
 
 			res.send(rows);
@@ -83,13 +88,14 @@ router.get('/', function(req, res, next) {
 
 router.get('/:id', async function(req, res, next) {
 	const fileUID = req.params.id;
-	console.log(`Generating signed url for file with UID=${fileUID}`);
+	console.log(`\nAttempting to read file with UID='${fileUID}'`);
 
+	console.log(`Generating signed get url...`);
 	IBMCOS.getSignedUrlPromise('getObject', { 
 		Bucket: IBMCOSBucket, 
 		Key: fileUID, 
 		//Expires: 3600 //seconds
-		Expires: 30 //seconds
+		Expires: 60 //seconds
 	})
 	.then(url => {
 		console.log(`Signed url generated: \n${url}`);
@@ -102,6 +108,9 @@ router.get('/:id', async function(req, res, next) {
 //-----------------------------------------------------------------------------
 // Create Requests
 //-----------------------------------------------------------------------------
+
+//TODO maybe have user send over a pregenned UID from their end, idk
+//TODO What if conflict with existing ID, especially deletedID? 
 
 //Create a new file
 //Returns the new file's UID
@@ -145,134 +154,94 @@ router.put('/', function(req, res, next) {
 		} finally {
 			client.release();
 		}
-
-
-		/*
-		//Create a new file in the IBM Cloud
-		try {
-			cos.putObject({
-				Bucket: IBMCOSBucket,
-				Key: newFileUID
-				//,Body: null
-			}).promise()
-			.then(() => {
-				console.log(`Item: ${itemName} created!`);
-			})
-			.catch((e) => {
-				console.error(`ERROR: ${e.code} - ${e.message}\n`);
-			});
-		} catch (e) {
-			console.error(`Error creating file in cos: ${e.code} - ${e.message}\n`);
-			res.sendStatus(404);
-		}
-		*/
-
-
 	})();
 });
 
 
 
+//Steps:
+//Check that fileUID exists
+//Generate presigned URL
+//Redirect request to presigned url for create/upload
 
 router.put('/:id', function(req, res, next) {
 	const fileUID = req.params.id;
-	console.log(`Writing file with UID=${fileUID}`);
+	console.log(`\nAttempting to write file with UID='${fileUID}'`);
 
 
-	/*
-	//Check that we have everything we need to write to the file
-	const body = req.body;
-	const requiredProps = ["data"]
-	const hasAllKeys = requiredProps.every(prop => Object.prototype.hasOwnProperty.call(body, prop));
-
-	//If we don't have all the required parameters...
-	if(!hasAllKeys) {
-		return res.status(422).send({
-			message: 'Write file request must contain a data parameter!'
-		});
-	}
-	*/
-
-	console.log(`Generating signed put url for file with UID=${fileUID}`);
-
-	IBMCOS.getSignedUrlPromise('putObject', { 
-		Bucket: IBMCOSBucket, 
-		Key: fileUID, 
-		Expires: 30 //seconds
-	})
-	.then(url => {
-		console.log(`Signed url generated: \n${url}`);
-		res.status(307).redirect(url);
-		//res.send(url);
-	});
+	(async () => {
+		const client = await POOL.connect();
 	
+		try {
+			//Check that a file with this UID exists in the database
+			const sql = `SELECT EXISTS(SELECT 1 FROM file WHERE fileuid='${fileUID} AND deleted != TRUE')`;
+			console.log(`Checking that file exists with sql:\n${sql}`);
+			var exists = await client.query(sql);
+			var exists = exists.rows[0].exists;
+
+			//If it doesn't exist, don't upload the file
+			if(!exists)
+				throw new Error(`FileUID not found! - ${fileUID}`);
+
+
+			//Note: putObject creates a file if it doesn't already exist
+			console.log(`Generating signed put url...`);
+			IBMCOS.getSignedUrlPromise('putObject', { 
+				Bucket: IBMCOSBucket, 
+				Key: fileUID, 
+				Expires: 60 //seconds
+			})
+			.then(url => {
+				console.log(`Signed url generated: \n${url}`);
+				res.status(307).redirect(url);
+			});
+		} 
+		catch (e) {
+			console.error(`Error uploading file: ${e.message}\n`);
+			res.sendStatus(404);
+		} finally {
+			client.release();
+		}
+	})();
 });
 
 
 
-
 router.delete('/delete/:id', function(req, res, next) {
-	const query = req.query;
-	console.log("Queries: ");
-	console.log(query);
-
 	const fileUID = req.params.id;
+	console.log(`\nAttempting to delete file with UID='${fileUID}'`);
+
 
 	(async () => {
 	  const client = await POOL.connect();
 		try {
 			//Get the file data's location
-			const sql = "delete from file "
-				+"where fileuid = '"+fileUID+"';";
-			console.log("Deleting file uri with sql -");
-			console.log(sql);
-			const {rows} = await client.query(sql);			
+			const sql = `UPDATE file SET deleted = true WHERE fileuid='${fileUID}'`;
+			console.log(`Setting file deleted with sql:\n${sql}`);
+			await client.query(sql);			
 
-			//Send the retreived data
-			console.log(rows);
-			res.send(rows);
+
+			//Delete object from IBM COS (sets delete marker)
+			console.log(`Deleting object from IBM COS...`);
+			IBMCOS.deleteObject({
+				Bucket: IBMCOSBucket,
+				Key: fileUID
+			}).promise()
+			.then(() => {
+				console.log(`Deleted fileUID='${fileUID}'`);
+				res.sendStatus(200);
+			});
 		} 
-		catch (err) {
-			console.error(err);
-			res.send(err);
+		catch (e) {
+			console.error(`Error deleting file: ${e.code} - ${e.message}\n`);
+			res.send(e);
+			//res.sendStatus(404);
 		} finally {
 			client.release();
 		}
 	})();
 });
 
-
-router.put('/delete/:id', function(req, res, next) {
-	const query = req.query;
-	console.log("Queries: ");
-	console.log(query);
-
-	const fileUID = req.params.id;
-
-	//Get the file data's location
-	const sql = "update file "
-	+"set deleted = true "
-	+"where fileuid = '"+fileUID+"';";
-
-	(async () => {
-	  const client = await POOL.connect();
-		try {
-			console.log("Setting file deleted with sql -");
-			console.log(sql);
-			const {rows} = await client.query(sql);			
-
-			//Send the retreived data
-			console.log(rows);
-			res.send(rows);
-		} 
-		catch (err) {
-			console.error(err);
-			res.send(err);
-		} finally {
-			client.release();
-		}
-	})();
-});
 
 
 module.exports = router;
