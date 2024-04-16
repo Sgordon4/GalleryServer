@@ -116,6 +116,7 @@ router.get('/:id', async function(req, res, next) {
 //Returns the new file's UID
 router.put('/', function(req, res, next) {
 	const body = req.body;
+	console.log(`\nAttempting to create file`);
 
 	//Check that we have everything we need to create a new file
 	const requiredProps = ["accountuid", "filename", "parentuid", "isdirectory", "issymboliclink"]
@@ -124,9 +125,16 @@ router.put('/', function(req, res, next) {
 	//If we don't have all the required parameters...
 	if(!hasAllKeys) {
 		return res.status(422).send({
-			message: 'New file request must contain all of [accountuid, filename, parentuid, and file type]'
+			message: 'New file request must contain all of [accountuid, filename, parentuid, isdirectory, and issymboliclink]'
 		});
 	}
+
+	console.log(`Creating file with properties:`);
+	console.log(`accountuid='${body.accountuid}'`);
+	console.log(`filename='${body.filename}'`);
+	console.log(`parentuid='${body.parentuid}'`);
+	console.log(`isdirectory='${body.isdirectory}'`);
+	console.log(`issymboliclink='${body.issymboliclink}'`);
 
 
 	(async () => {
