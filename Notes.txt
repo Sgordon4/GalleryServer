@@ -23,3 +23,7 @@ Gallery:
 - Get Metadata
 - Put Tags
 - Put Metadata
+
+
+
+https://www.bigbinary.com/blog/configure-postgresql-to-allow-remote-connection

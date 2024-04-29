@@ -33,7 +33,6 @@ CREATE TABLE IF NOT EXISTS public.file
 (
     fileuid uuid NOT NULL,
     filename character varying COLLATE pg_catalog."default" NOT NULL,
-    uri character varying COLLATE pg_catalog."default",
     parentuid uuid,
     accountuid uuid NOT NULL,
 	isdirectory boolean,
@@ -41,6 +40,38 @@ CREATE TABLE IF NOT EXISTS public.file
 	userdefinedattr json,
     tags json,
 	creationdate timestamp without time zone NOT NULL,
+	deleted boolean default false,
+    CONSTRAINT "File_pkey" PRIMARY KEY (fileuid),
+    CONSTRAINT "accountID" FOREIGN KEY (accountuid)
+        REFERENCES public.account (accountuid) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.file
+    OWNER to postgres;
+
+
+ALTER TABLE public.file ADD CONSTRAINT file_accountuid_filename_parentuid_key 
+	UNIQUE NULLS NOT DISTINCT (filename, parentuid, accountuid);
+
+
+
+//-------------------------------------------------------------------------------------------
+
+
+
+-- Table: public.versioning
+
+-- DROP TABLE IF EXISTS public.versioning;
+
+CREATE TABLE IF NOT EXISTS public.versioning
+(
+    fileuid uuid NOT NULL,
+	creationdate timestamp without time zone NOT NULL,
+	Some hash or some shit
 	deleted boolean default false,
     CONSTRAINT "File_pkey" PRIMARY KEY (fileuid),
     CONSTRAINT "accountID" FOREIGN KEY (accountuid)
