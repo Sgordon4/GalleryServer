@@ -62,6 +62,7 @@ ALTER TABLE public.file ADD CONSTRAINT file_accountuid_filename_parentuid_key
 //-------------------------------------------------------------------------------------------
 
 
+Server table should not include dirty bits
 
 -- Table: public.versioning
 
@@ -70,12 +71,17 @@ ALTER TABLE public.file ADD CONSTRAINT file_accountuid_filename_parentuid_key
 CREATE TABLE IF NOT EXISTS public.versioning
 (
     fileuid uuid NOT NULL,
-	creationdate timestamp without time zone NOT NULL,
-	Some hash or some shit
-	deleted boolean default false,
+	filechecksum text,
+	filedirty boolean default false,
+	dbchecksum text,
+	dbdirty boolean default false,
+    lastfileaccessdate timestamp without time zone,
+    lastfileupdatedate timestamp without time zone,
+	lastdbaccessdate timestamp without time zone,
+    lastdbupdatedate timestamp without time zone,
     CONSTRAINT "File_pkey" PRIMARY KEY (fileuid),
-    CONSTRAINT "accountID" FOREIGN KEY (accountuid)
-        REFERENCES public.account (accountuid) MATCH SIMPLE
+    CONSTRAINT fileuid FOREIGN KEY (fileuid)
+        REFERENCES public.file (fileuid) MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 )
@@ -100,6 +106,8 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO gallery;
 
 
 
+//-------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------
 
 
