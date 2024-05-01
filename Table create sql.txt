@@ -64,11 +64,11 @@ ALTER TABLE public.file ADD CONSTRAINT file_accountuid_filename_parentuid_key
 
 Server table should not include dirty bits
 
--- Table: public.versioning
+-- Table: public.status
 
--- DROP TABLE IF EXISTS public.versioning;
+-- DROP TABLE IF EXISTS public.status;
 
-CREATE TABLE IF NOT EXISTS public.versioning
+CREATE TABLE IF NOT EXISTS public.status
 (
     fileuid uuid NOT NULL,
 	filechecksum text,
@@ -88,12 +88,8 @@ CREATE TABLE IF NOT EXISTS public.versioning
 
 TABLESPACE pg_default;
 
-ALTER TABLE IF EXISTS public.file
+ALTER TABLE IF EXISTS public.status
     OWNER to postgres;
-
-
-ALTER TABLE public.file ADD CONSTRAINT file_accountuid_filename_parentuid_key 
-	UNIQUE NULLS NOT DISTINCT (filename, parentuid, accountuid);
 
 
 
