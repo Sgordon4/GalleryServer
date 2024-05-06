@@ -58,22 +58,24 @@ router.get('/:id', async function(req, res, next) {
 	console.log(`\nAttempting to read file with UID='${fileUID}'`);
 
 
-	try {
-		updateStateTableDate(fileUID, "lastfileaccessdate");
-	} 
-	catch (err) {
-		console.error(err);
-		res.send(err);
-		return;
-	} finally {
-		client.release();
-	}
+	// try {
+	// 	updateStateTableDate(fileUID, "lastfileaccessdate");
+	// } 
+	// catch (err) {
+	// 	console.error(err);
+	// 	res.send(err);
+	// 	return;
+	// } finally {
+	// 	client.release();
+	// }
+	
 	
 
 	console.log(`Generating signed get url...`);
 	IBMCOS.getSignedUrlPromise('getObject', { 
 		Bucket: IBMCOSBucket, 
-		Key: fileUID, 
+		//Key: fileUID, 
+		Key: "smiley.png", 
 		//Expires: 3600 //seconds
 		Expires: 60 //seconds
 	})
@@ -88,9 +90,6 @@ router.get('/:id', async function(req, res, next) {
 router.get('/properties/:id', async function(req, res, next) {
 	const fileUID = req.params.id;
 	console.log(`\nAttempting to fetch file properties with UID='${fileUID}'`);
-
-
-	updateStateTableDate(fileUID, "lastdbaccessdate", res);
 
 
 	var sql ="SELECT fileuid, filename, parentuid, accountuid, isdirectory, issymboliclink, "
@@ -128,6 +127,7 @@ router.get('/properties/:id', async function(req, res, next) {
 
 
 
+//TODO Don't allow an update unless the user sends the lastSynced checksum and it matches the current server version
 //Put the file itself
 router.put('/:id', function(req, res, next) {
 	const fileUID = req.params.id;
@@ -137,8 +137,6 @@ router.put('/:id', function(req, res, next) {
 	//Generate presigned URL
 	//Redirect request to presigned url for create/upload
 	(async () => {
-		updateStateTableDate(fileUID, "lastfileupdatedate", res);
-
 		try {
 			//We don't care if the file exists in the database, there will be a cleanup job for orphan files
 
@@ -162,6 +160,7 @@ router.put('/:id', function(req, res, next) {
 });
 
 
+//TODO Don't allow an update unless the user sends the lastSynced checksum and it matches the current server version
 //Put the file database entry
 router.put('/properties/:id', function(req, res, next) {
 	const fileUID = req.params.id;
@@ -172,8 +171,8 @@ router.put('/properties/:id', function(req, res, next) {
 
 	const allProps = ["fileuid", "filename", "filename", "parentuid", "accountuid", "isdirectory", "issymboliclink", 
 	"userdefinedattr", "tags", "deleted"]
-	const requiredProps = ["filename", "parentuid", "accountuid", "isdirectory", "issymboliclink"]
-	
+	const requiredProps = ["fileuid", "filename", "accountuid"]
+
 
 
 	//Filter the recieved properties down to the ones we care about
@@ -185,25 +184,27 @@ router.put('/properties/:id', function(req, res, next) {
 	for(const prop of receivedProps) 
 		receivedVals.push(body[prop]);
 	
-	console.log(`File has properties:`);
-	for(const prop of receivedProps) {
-		console.log(`${prop}='${body[prop]}'`)
-	}
+	// console.log(`File has properties:`);
+	// for(const prop of receivedProps) {
+	// 	console.log(`${prop}=${body[prop]}`)
+	// }
 
 
 
 	//If receivedProps doesn't have all the required parameters...
 	if(!requiredProps.every(prop => receivedProps.includes(prop))) {
+		console.log("File put request must contain all of [filename, accountuid, accountuid]");
 		return res.status(422).send({
-			message: 'File put request must contain all of [filename, parentuid, accountuid, isdirectory, issymboliclink]'
+			message: 'File put request must contain all of [filename, accountuid, accountuid]'
 		});
 	}
+	//Check to make sure no weird shit is going on with fileUID
 	if(fileUID != body.fileuid) {
+		console.log("File put request fileUIDs must match")
 		return res.status(422).send({
 			message: 'File put request fileUIDs must match'
 		});
 	}
-
 
 
 	var props = receivedProps.join(", ");
@@ -213,9 +214,6 @@ router.put('/properties/:id', function(req, res, next) {
 			return prop;
 		return `'${prop}'`;
 	}).join(", ");
-
-
-	updateStateTableDate(fileUID, "lastdbupdatedate", res);
 
 	
 
