@@ -9,9 +9,11 @@ CREATE TABLE IF NOT EXISTS public.account
     username character varying COLLATE pg_catalog."default" NOT NULL,
     password character varying COLLATE pg_catalog."default" NOT NULL,
     displayname character varying COLLATE pg_catalog."default" NOT NULL,
+	basefileuid uuid,
     creationdate timestamp without time zone NOT NULL,
 	lastaccessdate timestamp without time zone,
     lastupdatedate timestamp without time zone,
+	deleted boolean default false,
     CONSTRAINT "Account_pkey" PRIMARY KEY (accountuid)
 )
 
@@ -64,22 +66,22 @@ ALTER TABLE public.file ADD CONSTRAINT file_accountuid_filename_parentuid_key
 
 Server table should not include dirty bits
 
--- Table: public.status
+-- Table: public.state
 
--- DROP TABLE IF EXISTS public.status;
+-- DROP TABLE IF EXISTS public.state;
 
-CREATE TABLE IF NOT EXISTS public.status
+CREATE TABLE IF NOT EXISTS public.state
 (
     fileuid uuid NOT NULL,
 	filechecksum text,
-	filedirty boolean default false,
+	--filedirty boolean default false,
 	dbchecksum text,
-	dbdirty boolean default false,
+	--dbdirty boolean default false,
     lastfileaccessdate timestamp without time zone,
     lastfileupdatedate timestamp without time zone,
 	lastdbaccessdate timestamp without time zone,
     lastdbupdatedate timestamp without time zone,
-    CONSTRAINT "File_pkey" PRIMARY KEY (fileuid),
+    CONSTRAINT "State_pkey" PRIMARY KEY (fileuid),
     CONSTRAINT fileuid FOREIGN KEY (fileuid)
         REFERENCES public.file (fileuid) MATCH SIMPLE
         ON UPDATE NO ACTION
@@ -88,7 +90,7 @@ CREATE TABLE IF NOT EXISTS public.status
 
 TABLESPACE pg_default;
 
-ALTER TABLE IF EXISTS public.status
+ALTER TABLE IF EXISTS public.state
     OWNER to postgres;
 
 

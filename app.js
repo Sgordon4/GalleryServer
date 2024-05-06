@@ -9,6 +9,11 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 const Joi = require('joi');
+const http = require('http');
+const https = require('https');
+const fs = require('fs');
+const privateKey = fs.readFileSync(path.join(__dirname, 'certs/localhost.key'), 'utf8');
+const certificate = fs.readFileSync(path.join(__dirname, 'certs/localhost.crt'), 'utf8');
 
 var app = express();
 
@@ -51,7 +56,11 @@ app.use(function(err, req, res, next) {
 
 module.exports = app;
 
+const credentials = {
+	key: privateKey,
+	cert: certificate,
+  };
 
 const port = process.env.port || 3306
-app.listen(port, () => console.log(`Listening on port ${port}...`))
-
+//app.listen(port, () => console.log(`Listening on port ${port}...`))
+http.createServer(credentials, app).listen(port);

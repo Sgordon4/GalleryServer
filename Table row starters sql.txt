@@ -1,5 +1,7 @@
-insert into account (accountuid, username, password, email, displayname, creationdate)
-values ('40e6215d-b5c6-4896-987c-f30f3678f608', 'firstuser', 'password', 'firstuser@gmail.com', 'firstusername', '2024-02-04 12:00:00');
+INSERT INTO public.account
+(accountuid, email, username, password, displayname, basefileuid, creationdate, lastaccessdate, lastupdatedate, deleted)
+VALUES('cfcd2084-95d5-35ef-a6e7-dff9f98764da'::uuid, 'firstuser@gmail.com', 'firstuser', 
+'password', 'firstusername', NULL, CURRENT_DATE, NULL, NULL, false);
 
 
 

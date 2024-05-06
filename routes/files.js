@@ -103,6 +103,34 @@ router.get('/:id', async function(req, res, next) {
 	});
 });
 
+router.get('/properties/:id', async function(req, res, next) {
+	const fileUID = req.params.id;
+	console.log(`\nAttempting to fetch file properties with UID='${fileUID}'`);
+
+	var sql ="SELECT fileuid, filename, parentuid, accountuid, isdirectory, issymboliclink, "
+			+"userdefinedattr, tags, creationdate, deleted FROM file "
+			+"WHERE fileuid = '"+fileUID+"';";
+
+
+	(async () => {
+	  const client = await POOL.connect();
+
+		try {
+			console.log(`Fetching file properties with sql:\n${sql}`);
+			const {rows} = await client.query(sql);
+
+			res.send(rows);
+		} 
+		catch (err) {
+			console.error(err);
+			res.send(err);
+		} finally {
+			client.release();
+		}
+	})();
+
+});
+
 
 
 //-----------------------------------------------------------------------------
@@ -167,19 +195,101 @@ router.put('/', function(req, res, next) {
 
 
 
-//Steps:
-//Check that fileUID exists
-//Generate presigned URL
-//Redirect request to presigned url for create/upload
-
 router.put('/:id', function(req, res, next) {
 	const fileUID = req.params.id;
+	const body = req.body;
 	console.log(`\nAttempting to write file with UID='${fileUID}'`);
+	console.log(body);
+
+
+	const allProps = ["fileuid", "filename", "filename", "parentuid", "accountuid", "isdirectory", "issymboliclink", 
+	"userdefinedattr", "tags", "deleted"]
+	const requiredProps = ["filename", "parentuid", "accountuid", "isdirectory", "issymboliclink"]
+	
+
+
+	//Filter the recieved properties down to the ones we care about
+	var receivedProps = Object.keys(body);
+	receivedProps = receivedProps.filter(prop => allProps.includes(prop));
+
+	//Grab all the values sent over for the properties we care about
+	var receivedVals = [];
+	for(const prop of receivedProps) 
+		receivedVals.push(body[prop]);
+	
+	console.log(`File has properties:`);
+	for(const prop of receivedProps) {
+		console.log(`${prop}='${body[prop]}'`)
+	}
+
+
+
+	//If receivedProps doesn't have all the required parameters...
+	if(!requiredProps.every(prop => receivedProps.includes(prop))) {
+		return res.status(422).send({
+			message: 'File put request must contain all of [filename, parentuid, accountuid, isdirectory, issymboliclink]'
+		});
+	}
+	if(fileUID != body.fileuid) {
+		return res.status(422).send({
+			message: 'File put request fileUIDs must match'
+		});
+	}
+
+
+
+	var props = receivedProps.join(", ");
+
+	var vals = receivedVals.map(prop => {
+		if(prop == 'null')
+			return prop;
+		return `'${prop}'`;
+	}).join(", ");
+
+	
+	const sql = `insert into file (${props}, creationdate) `
+	+`values (${vals}, (now() at time zone 'utc')) `
+	+`on conflict (fileuid) do update `
+	+`set (${props}, creationdate) `
+	+`= (${vals}, (now() at time zone 'utc'));`;
+
+
+
 
 
 	(async () => {
 		const client = await POOL.connect();
-	
+
+		//Note: If we don't trust the app to generate the FileUID, we'll need to use "returning fileuid" here.
+		// This only returns ID when file is actually created, not on duplicate create requests.
+		//See https://stackoverflow.com/questions/34708509/how-to-use-returning-with-on-conflict-in-postgresql
+
+		//TODO Null checks and omitting things if prop doesn't exist
+		try {
+
+			console.log("Putting file with sql -");
+			console.log(sql);
+			
+			var ret = await client.query(sql);	
+			console.log("NewShit EEEEEEEEEEEEEEE"+ret);		
+			res.send(ret);
+		} 
+		catch (e) {
+			console.error(`Error putting file in database: ${e.message}\n`);
+			res.sendStatus(404);
+		} finally {
+			client.release();
+		}
+
+
+
+		/*
+
+		//Steps:
+		//Check that fileUID exists
+		//Generate presigned URL
+		//Redirect request to presigned url for create/upload
+
 		try {
 			//Check that a file with this UID exists in the database
 			const sql = `SELECT EXISTS(SELECT 1 FROM file WHERE fileuid='${fileUID}' AND deleted != TRUE)`;
@@ -210,6 +320,7 @@ router.put('/:id', function(req, res, next) {
 		} finally {
 			client.release();
 		}
+		*/
 	})();
 });
 
