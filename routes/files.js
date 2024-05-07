@@ -85,6 +85,23 @@ router.get('/:id', async function(req, res, next) {
 	});
 });
 
+router.get('/update/:id', async function(req, res, next) {
+	const fileUID = req.params.id;
+	console.log(`\nAttempting to generate put url for UID='${fileUID}'`);
+	
+
+	console.log(`Generating signed put url...`);
+	IBMCOS.getSignedUrlPromise('putObject', { 
+		Bucket: IBMCOSBucket, 
+		Key: fileUID, 
+		Expires: 60 //seconds
+	})
+	.then(url => {
+		console.log(`Signed url generated: \n${url}`);
+		res.send(url);
+	});
+});
+
 //-----------------------------------------------------------------------------
 
 router.get('/properties/:id', async function(req, res, next) {
@@ -125,6 +142,19 @@ router.get('/properties/:id', async function(req, res, next) {
 // Create Requests
 //-----------------------------------------------------------------------------
 
+//https://github.com/gustavares/cos-tutorial/blob/master/TUTORIAL.md#312-getpresignedurl-function
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 //TODO Don't allow an update unless the user sends the lastSynced checksum and it matches the current server version
@@ -132,6 +162,10 @@ router.get('/properties/:id', async function(req, res, next) {
 router.put('/:id', function(req, res, next) {
 	const fileUID = req.params.id;
 
+	var url = `https://gallery-cloud-object-storage.s3.us-east.cloud-object-storage.appdomain.cloud/f899139d-f5e1-3593-9643-1415e770c6dd?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=4b493ca412fc4541a7b7235f103ff1be%2F20240507%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20240507T134735Z&X-Amz-Expires=6000&X-Amz-Signature=d77ce3313adeb308a067652c184fa845c005b85bf7cca68f4818e70a31a4e752&X-Amz-SignedHeaders=host`;
+	//res.redirect(307, url);
+
+	
 	//Steps:
 	//Check that fileUID exists
 	//Generate presigned URL
@@ -145,7 +179,7 @@ router.put('/:id', function(req, res, next) {
 			IBMCOS.getSignedUrlPromise('putObject', { 
 				Bucket: IBMCOSBucket, 
 				Key: fileUID, 
-				Expires: 600 //seconds
+				Expires: 6000 //seconds
 			})
 			.then(url => {
 				console.log(`Signed url generated: \n${url}`);
@@ -157,7 +191,27 @@ router.put('/:id', function(req, res, next) {
 			res.sendStatus(404);
 		}
 	})();
+	
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 //TODO Don't allow an update unless the user sends the lastSynced checksum and it matches the current server version
