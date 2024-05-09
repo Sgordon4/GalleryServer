@@ -31,11 +31,13 @@ var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/accounts');
 var metadataRouter = require('./routes/metadata');
 var filesRouter = require('./routes/files');
+var filesUploadMultipartRouter = require('./routes/upload/multipart');
 
 app.use('/', indexRouter);
 app.use('/accounts', usersRouter);
 app.use('/files/metadata', metadataRouter);
 app.use('/files', filesRouter);
+app.use('/files/upload/multipart', filesUploadMultipartRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

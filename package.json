@@ -22,5 +22,9 @@
     "querystring": "^0.2.1",
     "route": "^0.2.5",
     "urlsearchparams": "^0.1.1"
+  },
+  "imports": {
+    "#root/*.js": "./*.js",
+    "#root/*": "./*.js"
   }
 }
