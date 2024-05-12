@@ -5,27 +5,35 @@ Varchar is probably an inefficient type to store sha256 hashes
 ---------------------------------------------------------------------------------------------
 
 
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO gallery;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO gallery;
+
+
+drop table if exists journal;
+drop table if exists file;
+drop table if exists account;
+
+
+---------------------------------------------------------------------------------------------
+
+
 -- DROP TABLE IF EXISTS public.account;
 
 CREATE TABLE IF NOT EXISTS public.account
 (
-	accountuid uuid NOT NULL primary key,
-	email character varying NOT NULL,
-	username character varying NOT NULL,
-	password character varying NOT NULL,
-	displayname character varying NOT NULL,
-	rootfileuid uuid NOT NULL,
-	createtime timestamp without time zone NOT NULL,
-	accesstime timestamp without time zone,
+	accountuid uuid NOT NULL default gen_random_uuid() primary key,
+	email varchar NOT NULL UNIQUE,
+	--username varchar NOT NULL UNIQUE,
+	displayname varchar NOT NULL,
+	password varchar NOT NULL,
+	rootfileuid uuid NOT NULL default gen_random_uuid(),
+	logintime timestamp without time zone,
 	changetime timestamp without time zone,
-	modifytime timestamp without time zone,
-	deletetime timestamp without time zone
+	deletetime timestamp without time zone,
+	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc')
 );
 	
-ALTER TABLE IF EXISTS public.account 
-	ADD CONSTRAINT "Account_File" FOREIGN KEY (rootfileuid) REFERENCES public.file (fileuid);
-	
-	
+
 ---------------------------------------------------------------------------------------------
 
 
@@ -33,17 +41,17 @@ ALTER TABLE IF EXISTS public.account
 
 CREATE TABLE IF NOT EXISTS public.file
 (
-	fileuid uuid NOT NULL primary key,
+	fileuid uuid NOT NULL default gen_random_uuid() primary key,
 	owneruid uuid NOT NULL references account (accountuid),
-	isdir boolean NOT NULL,
-	islink boolean NOT NULL,
-	filesize bigint,
-	fileblocks varchar[],
-	createtime timestamp without time zone NOT NULL,
-	accesstime timestamp without time zone,
+	isdir boolean NOT NULL default false,
+	islink boolean NOT NULL default false,
+	filesize bigint NOT NULL default 0,
+	fileblocks varchar[] NOT NULL default '{}',
 	changetime timestamp without time zone,
+	accesstime timestamp without time zone,
 	modifytime timestamp without time zone,
-	deletetime timestamp without time zone
+	deletetime timestamp without time zone,
+	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc')
 );
 
 
@@ -54,10 +62,12 @@ CREATE TABLE IF NOT EXISTS public.file
 
 CREATE TABLE IF NOT EXISTS public.journal
 (
-	fileuid uuid NOT NULL primary key references file (fileuid),
+	journalid BIGSERIAL PRIMARY KEY,
+	fileuid uuid NOT NULL references file (fileuid),
 	owneruid uuid NOT NULL references account (accountuid),
 	filesize bigint,
-	fileblocks varchar[]
+	fileblocks varchar[],
+	changetime timestamp without time zone NOT NULL default (now() at time zone 'utc')
 );
 
 
