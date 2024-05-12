@@ -25,6 +25,15 @@ We should also be sending the md5 hash of each part with the Content-MD5 header 
 
 
 //=============================================================================
+//
+// NOTE
+// Multipart uploads aren't really used as the system uses a chunking system with block sizes = 5MB
+//
+//=============================================================================
+
+
+
+//=============================================================================
 // Multipart Upload
 //=============================================================================
 

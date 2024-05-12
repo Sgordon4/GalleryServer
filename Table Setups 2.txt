@@ -1,0 +1,74 @@
+Notes:
+Varchar is probably an inefficient type to store sha256 hashes
+
+
+---------------------------------------------------------------------------------------------
+
+
+-- DROP TABLE IF EXISTS public.account;
+
+CREATE TABLE IF NOT EXISTS public.account
+(
+	accountuid uuid NOT NULL primary key,
+	email character varying NOT NULL,
+	username character varying NOT NULL,
+	password character varying NOT NULL,
+	displayname character varying NOT NULL,
+	rootfileuid uuid NOT NULL,
+	createtime timestamp without time zone NOT NULL,
+	accesstime timestamp without time zone,
+	changetime timestamp without time zone,
+	modifytime timestamp without time zone,
+	deletetime timestamp without time zone
+);
+	
+ALTER TABLE IF EXISTS public.account 
+	ADD CONSTRAINT "Account_File" FOREIGN KEY (rootfileuid) REFERENCES public.file (fileuid);
+	
+	
+---------------------------------------------------------------------------------------------
+
+
+-- DROP TABLE IF EXISTS public.file;
+
+CREATE TABLE IF NOT EXISTS public.file
+(
+	fileuid uuid NOT NULL primary key,
+	owneruid uuid NOT NULL references account (accountuid),
+	isdir boolean NOT NULL,
+	islink boolean NOT NULL,
+	filesize bigint,
+	fileblocks varchar[],
+	createtime timestamp without time zone NOT NULL,
+	accesstime timestamp without time zone,
+	changetime timestamp without time zone,
+	modifytime timestamp without time zone,
+	deletetime timestamp without time zone
+);
+
+
+---------------------------------------------------------------------------------------------
+
+
+-- DROP TABLE IF EXISTS public.journal;
+
+CREATE TABLE IF NOT EXISTS public.journal
+(
+	fileuid uuid NOT NULL primary key references file (fileuid),
+	owneruid uuid NOT NULL references account (accountuid),
+	filesize bigint,
+	fileblocks varchar[]
+);
+
+
+---------------------------------------------------------------------------------------------
+
+
+-- DROP TABLE IF EXISTS public.block;
+
+CREATE TABLE IF NOT EXISTS public.block
+(
+	chunkhash varchar NOT NULL,
+	chunksize integer NOT NULL,
+	createtime timestamp without time zone NOT NULL
+);
