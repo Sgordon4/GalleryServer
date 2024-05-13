@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS public.file
 
 CREATE TABLE IF NOT EXISTS public.journal
 (
-	journalid BIGSERIAL PRIMARY KEY,
+	journalid BIGSERIAL NOT NULL primary key,
 	fileuid uuid NOT NULL references file (fileuid),
 	owneruid uuid NOT NULL references account (accountuid),
 	filesize bigint,
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS public.journal
 
 CREATE TABLE IF NOT EXISTS public.block
 (
-	chunkhash varchar NOT NULL,
-	chunksize integer NOT NULL,
-	createtime timestamp without time zone NOT NULL
+	chunkhash varchar NOT NULL primary key,
+	chunksize integer NOT NULL default 0,
+	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc')
 );
