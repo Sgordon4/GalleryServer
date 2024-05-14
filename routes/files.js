@@ -137,8 +137,8 @@ router.put('/commit/:id', async function(req, res, next) {
 		fileBlocks = JSON.parse(body.fileblocks);
 		if(!Array.isArray(fileBlocks)) throw new Error('fileblocks is not an array!');
 	} catch (err) {
-		console.log(`File create request must contain a JSON array of fileblocks!`);
-		return res.status(422).send({ message: `File create request must contain a JSON array of fileblocks!` });
+		console.log(`File commit request must contain a JSON array of fileblocks!`);
+		return res.status(422).send({ message: `File commit request must contain a JSON array of fileblocks!` });
 	}
 
 	
@@ -146,40 +146,46 @@ router.put('/commit/:id', async function(req, res, next) {
 		const client = await POOL.connect();
 		try {
 
+			var fileSize = 0;
 			if(fileBlocks.length > 0) {
 				//Check that all blocks exist
 				var getblockssql = 
-				`SELECT array_to_string(array_agg(blockhash), ',') FROM block 
+				`SELECT blockhash, blocksize FROM block 
 				WHERE blockhash IN ('${fileBlocks.join("', '")}');`;
 
 				console.log(`Fetching existing blocks with sql -`);
 				console.log(getblockssql.replaceAll("\t","").replaceAll("\n", " "));
-
 				var {rows} = await client.query(getblockssql);
-				var existingBlocks = rows[0].array_to_string.split(",");
+
+
+				var existingBlocks = rows.map(block => block.blockhash);
+				fileSize = rows.reduce((sum, block) => sum + block.blocksize, 0)
+				let missingblocks = fileBlocks.filter(block => !existingBlocks.includes(block));
+
+				console.log(`Blocks:  [${fileBlocks}]`);
+				console.log(`Missing: [${missingblocks}]`);
 
 
 				//If we don't have all the blocks, notify the client of the ones that are missing
-				let missing = fileBlocks.filter(block => !existingBlocks.includes(block));
-				if(missing.length > 0) {
-					res.status(400).send({ message: `Cannot commit, blocks are missing!`, "missingblocks":missing})
+				if(missingblocks.length > 0) {
+					res.status(400).send({ message: `Cannot commit, blocks are missing!`, "missingblocks":missingblocks})
 					return;
 				}
 			}
-			
+
 			
 
 			//Otherwise, we are ok-ed to update the file's blockset
 			var updateblocksetsql = 
-			`UPDATE file SET fileblocks = '{${fileBlocks.map(block => `"${block}"`).join(`, `)}}' 
+			`UPDATE file SET fileblocks = '{${fileBlocks.map(block => `"${block}"`).join(`, `)}}',
+			filesize = ${fileSize}
 			WHERE fileuid = '${fileUID}';`
 
 			console.log(`Updating fileblocks with sql -`);
 			console.log(updateblocksetsql.replaceAll("\t","").replaceAll("\n", " "));
 			
 			var {rowCount} = await client.query(updateblocksetsql);
-			console.log("rowCount");
-			console.log(rowCount);
+
 
 			if(rowCount == 0)
 				res.sendStatus(404);

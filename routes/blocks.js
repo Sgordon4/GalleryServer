@@ -35,16 +35,20 @@ router.get('/:hash', async function(req, res, next) {
 
 //-----------------------------------------------------------------------------
 
+
 //Get a presigned PUT url to upload the block itself
 router.get('/upload/:hash', async function(req, res, next) {
 	const blockHash = req.params.hash;
 	console.log(`\nPUT BLOCK URL called with hash='${blockHash}'`);
 
-	const body = req.body;
-	if(!body.blocksize) {
-		console.log(`Block put request must contain blocksize!`);
-		return res.status(422).send({ message: `Block put request must contain blocksize!` });
-	}
+	// const body = req.body;
+	// if(!body.blocksize) {
+	// 	console.log(`Block put request must contain blocksize!`);
+	// 	return res.status(422).send({ message: `Block put request must contain blocksize!` });
+	// }
+	//When we change to a cloud trigger updating the block table, see if we can't pass blocksize 
+	// with the upload url for use with the trigger, since the block will be compressed and encrypted
+	// when it ends up at the server so the blocksize will be different.
 
 
 	console.log(`Generating signed put url...`);
@@ -57,7 +61,7 @@ router.get('/upload/:hash', async function(req, res, next) {
 		console.log(`Signed block put url generated: \n${url}`);
 
 		(async () => {
-			await putBlock(blockHash, body.blocksize, res);
+			//await putBlock(blockHash, body.blocksize, res);
 
 			console.log("Sending url");
 			res.send(url);
@@ -77,8 +81,8 @@ router.put('/:hash', async function(req, res, next) {
 
 	const body = req.body;
 	if(!body.blocksize) {
-		console.log(`File create request must contain blocksize!`);
-		return res.status(422).send({ message: `File create request must contain blocksize!` });
+		console.log(`Block create request must contain blocksize!`);
+		return res.status(422).send({ message: `Block create request must contain blocksize!` });
 	}
 
 	
