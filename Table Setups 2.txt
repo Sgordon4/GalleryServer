@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS public.journal
 
 CREATE TABLE IF NOT EXISTS public.block
 (
-	chunkhash varchar NOT NULL primary key,
-	chunksize integer NOT NULL default 0,
+	blockhash varchar NOT NULL primary key,
+	blocksize integer NOT NULL default 0,
 	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc')
 );

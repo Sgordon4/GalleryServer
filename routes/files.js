@@ -131,11 +131,14 @@ router.put('/commit/:id', async function(req, res, next) {
 	const body = req.body;
 	console.log(`\nCOMMIT FILE called with fileUID='${fileUID}'`);
 
+
+	console.log("Fileblocks:");
+	console.log(body.fileblocks);
 	
-	var fileBlocks = [];
+	var fileblocks = [];
 	try {
-		fileBlocks = JSON.parse(body.fileblocks);
-		if(!Array.isArray(fileBlocks)) throw new Error('fileblocks is not an array!');
+		fileblocks = JSON.parse(body.fileblocks);
+		if(!Array.isArray(fileblocks)) throw new Error('fileblocks is not an array!');
 	} catch (err) {
 		console.log(`File commit request must contain a JSON array of fileblocks!`);
 		return res.status(422).send({ message: `File commit request must contain a JSON array of fileblocks!` });
@@ -147,11 +150,11 @@ router.put('/commit/:id', async function(req, res, next) {
 		try {
 
 			var fileSize = 0;
-			if(fileBlocks.length > 0) {
+			if(fileblocks.length > 0) {
 				//Check that all blocks exist
 				var getblockssql = 
 				`SELECT blockhash, blocksize FROM block 
-				WHERE blockhash IN ('${fileBlocks.join("', '")}');`;
+				WHERE blockhash IN ('${fileblocks.join("', '")}');`;
 
 				console.log(`Fetching existing blocks with sql -`);
 				console.log(getblockssql.replaceAll("\t","").replaceAll("\n", " "));
@@ -160,9 +163,9 @@ router.put('/commit/:id', async function(req, res, next) {
 
 				var existingBlocks = rows.map(block => block.blockhash);
 				fileSize = rows.reduce((sum, block) => sum + block.blocksize, 0)
-				let missingblocks = fileBlocks.filter(block => !existingBlocks.includes(block));
+				let missingblocks = fileblocks.filter(block => !existingBlocks.includes(block));
 
-				console.log(`Blocks:  [${fileBlocks}]`);
+				console.log(`Blocks:  [${fileblocks}]`);
 				console.log(`Missing: [${missingblocks}]`);
 
 
@@ -177,7 +180,7 @@ router.put('/commit/:id', async function(req, res, next) {
 
 			//Otherwise, we are ok-ed to update the file's blockset
 			var updateblocksetsql = 
-			`UPDATE file SET fileblocks = '{${fileBlocks.map(block => `"${block}"`).join(`, `)}}',
+			`UPDATE file SET fileblocks = '{${fileblocks.map(block => `"${block}"`).join(`, `)}}',
 			filesize = ${fileSize}
 			WHERE fileuid = '${fileUID}';`
 

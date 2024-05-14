@@ -15,6 +15,34 @@ https://cloud.ibm.com/docs/codeengine
 
 
 //Get a presigned GET url to access the block itself
+router.get('/exists/:hash', async function(req, res, next) {
+	const blockHash = req.params.hash;
+	console.log(`\nGET BLOCK EXISTS called with hash='${blockHash}'`);
+
+	var sql =
+	`SELECT EXISTS(SELECT 1 FROM block WHERE blockhash='${blockHash}');`;
+
+	(async () => {
+		const client = await POOL.connect();
+		try {
+			console.log(`Fetching block exists with sql -`);
+			console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
+			const {rows} = await client.query(sql);
+
+			res.send(rows[0]);
+		} 
+		catch (err) {
+			console.error(err);
+			res.send(err);
+		}
+		finally { client.release(); }
+	})();
+});
+
+
+//-----------------------------------------------------------------------------
+
+//Get a presigned GET url to access the block itself
 router.get('/:hash', async function(req, res, next) {
 	const blockHash = req.params.hash;
 	console.log(`\nGET BLOCK called with hash='${blockHash}'`);
