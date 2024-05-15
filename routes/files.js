@@ -13,6 +13,7 @@ Do we want to exlude deleted files?
 Thinking about trashed files, we could simply put a trashedtime in the ordering and that would suffice,
 Wait yeah that's it. If two dirs ref one fileuid, and one trashes it, we can't just delete it. 
 */
+//TODO Require isDir and isLink to be 0:0, 1:0, or 0:1
 
 
 

@@ -6,15 +6,15 @@ CREATE TABLE IF NOT EXISTS public.account
 (
     accountuid uuid NOT NULL,
     email character varying COLLATE pg_catalog."default" NOT NULL,
-    username character varying COLLATE pg_catalog."default" NOT NULL,
-    password character varying COLLATE pg_catalog."default" NOT NULL,
+    -- username character varying COLLATE pg_catalog."default" NOT NULL,
     displayname character varying COLLATE pg_catalog."default" NOT NULL,
-	basefileuid uuid,
-    creationdate timestamp without time zone NOT NULL,
-	lastaccessdate timestamp without time zone,
-    lastupdatedate timestamp without time zone,
-	deleted boolean default false,
-    CONSTRAINT "Account_pkey" PRIMARY KEY (accountuid)
+    password character varying COLLATE pg_catalog."default" NOT NULL,
+	rootfileuid uuid,
+	logintime timestamp without time zone,
+	changetime timestamp without time zone,
+    deletetime timestamp without time zone,
+    createtime timestamp without time zone NOT NULL,
+    -- CONSTRAINT "Account_pkey" PRIMARY KEY (accountuid)
 )
 
 TABLESPACE pg_default;
