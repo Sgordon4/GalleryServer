@@ -30,8 +30,9 @@ router.get('/:id', async function(req, res, next) {
 
 			if(rows.length == 0)
 				res.sendStatus(404);
-			else
+			else {
 				res.send(rows[0]);
+			}
 		} 
 		catch (err) {
 			console.error(err);
@@ -53,7 +54,9 @@ router.post('/', async function(req, res, next) {
 	const body = req.body;
 	if(!body.email || !body.displayname || !body.password) {
 		console.log(`Account create request must contain an email, displayname, and password!`);
-		return res.status(422).send({ message: `Account create request must contain an email, displayname, and password!` });
+		res.statusMessage = `Account create request must contain an email, displayname, and password!`;
+		return res.status(422).end();
+		//return res.status(422).send({ message: `Account create request must contain an email, displayname, and password!` });
 	}
 
 
