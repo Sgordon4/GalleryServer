@@ -126,6 +126,8 @@ router.put('/:id', async function(req, res, next) {
 //-----------------------------------------------------------------------------
 
 
+//TODO This isn't updating the journal
+
 //Update a blockset
 router.put('/commit/:id', async function(req, res, next) {
 	const fileUID = req.params.id;
@@ -172,6 +174,8 @@ router.put('/commit/:id', async function(req, res, next) {
 
 				//If we don't have all the blocks, notify the client of the ones that are missing
 				if(missingblocks.length > 0) {
+					res.statusMessage = `Cannot commit, blocks are missing!`;
+					return res.status(400).send({"missingblocks":missingblocks}).end();
 					res.status(400).send({ message: `Cannot commit, blocks are missing!`, "missingblocks":missingblocks})
 					return;
 				}
