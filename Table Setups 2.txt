@@ -9,6 +9,7 @@ GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO gallery;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO gallery;
 
 
+drop table if exists block;
 drop table if exists journal;
 drop table if exists file;
 drop table if exists account;
@@ -22,14 +23,13 @@ drop table if exists account;
 CREATE TABLE IF NOT EXISTS public.account
 (
 	accountuid uuid NOT NULL default gen_random_uuid() primary key,
+	rootfileuid uuid NOT NULL references file (fileuid),
 	email varchar NOT NULL UNIQUE,
-	--username varchar NOT NULL UNIQUE,
 	displayname varchar NOT NULL,
 	password varchar NOT NULL,
-	rootfileuid uuid NOT NULL default gen_random_uuid(),
+	isdeleted boolean NOT NULL default false,
 	logintime timestamp without time zone,
 	changetime timestamp without time zone,
-	deletetime timestamp without time zone,
 	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc')
 );
 	
@@ -42,15 +42,15 @@ CREATE TABLE IF NOT EXISTS public.account
 CREATE TABLE IF NOT EXISTS public.file
 (
 	fileuid uuid NOT NULL default gen_random_uuid() primary key,
-	owneruid uuid NOT NULL references account (accountuid),
+	accountuid uuid NOT NULL references account (accountuid),
 	isdir boolean NOT NULL default false,
 	islink boolean NOT NULL default false,
+	fileblocks varchar[] NOT NULL default '[]',
 	filesize bigint NOT NULL default 0,
-	fileblocks varchar[] NOT NULL default '{}',
+	isdeleted boolean NOT NULL default false,
 	changetime timestamp without time zone,
-	accesstime timestamp without time zone,
 	modifytime timestamp without time zone,
-	deletetime timestamp without time zone,
+	accesstime timestamp without time zone,
 	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc')
 );
 
@@ -64,9 +64,12 @@ CREATE TABLE IF NOT EXISTS public.journal
 (
 	journalid BIGSERIAL NOT NULL primary key,
 	fileuid uuid NOT NULL references file (fileuid),
-	owneruid uuid NOT NULL references account (accountuid),
-	filesize bigint,
-	fileblocks varchar[],
+	accountuid uuid NOT NULL references account (accountuid),
+	isdir boolean NOT NULL default false,
+	islink boolean NOT NULL default false,
+	fileblocks varchar[] NOT NULL default '[]',
+	filesize bigint NOT NULL default 0,
+	isdeleted boolean NOT NULL default false,
 	changetime timestamp without time zone NOT NULL default (now() at time zone 'utc')
 );
 
@@ -78,7 +81,7 @@ CREATE TABLE IF NOT EXISTS public.journal
 
 CREATE TABLE IF NOT EXISTS public.block
 (
-	blockhash varchar NOT NULL primary key,
+	blockhash varchar NOT NULL primary key,
 	blocksize integer NOT NULL default 0,
 	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc')
 );
