@@ -42,10 +42,10 @@ CREATE TABLE IF NOT EXISTS public.account
 CREATE TABLE IF NOT EXISTS public.file
 (
 	fileuid uuid NOT NULL default gen_random_uuid() primary key,
-	accountuid uuid NOT NULL references account (accountuid),
+	accountuid uuid NOT NULL,
 	isdir boolean NOT NULL default false,
 	islink boolean NOT NULL default false,
-	fileblocks varchar[] NOT NULL default '[]',
+	fileblocks varchar[] NOT NULL default '{}',
 	filesize bigint NOT NULL default 0,
 	isdeleted boolean NOT NULL default false,
 	changetime timestamp without time zone,
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS public.journal
 	accountuid uuid NOT NULL references account (accountuid),
 	isdir boolean NOT NULL default false,
 	islink boolean NOT NULL default false,
-	fileblocks varchar[] NOT NULL default '[]',
+	fileblocks varchar[] NOT NULL default '{}',
 	filesize bigint NOT NULL default 0,
 	isdeleted boolean NOT NULL default false,
 	changetime timestamp without time zone NOT NULL default (now() at time zone 'utc')
