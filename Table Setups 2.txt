@@ -32,6 +32,10 @@ CREATE TABLE IF NOT EXISTS public.account
 	changetime timestamp without time zone,
 	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc')
 );
+
+
+-- Note: Creating an account entry requires that the rootfile already exist in the file table.
+-- This avoids race conditions and problems due to bad connection
 	
 
 ---------------------------------------------------------------------------------------------
@@ -64,7 +68,7 @@ CREATE TABLE IF NOT EXISTS public.journal
 (
 	journalid BIGSERIAL NOT NULL primary key,
 	fileuid uuid NOT NULL references file (fileuid),
-	accountuid uuid NOT NULL references account (accountuid),
+	accountuid uuid NOT NULL --references account (accountuid), 
 	isdir boolean NOT NULL default false,
 	islink boolean NOT NULL default false,
 	fileblocks varchar[] NOT NULL default '{}',
@@ -72,6 +76,11 @@ CREATE TABLE IF NOT EXISTS public.journal
 	isdeleted boolean NOT NULL default false,
 	changetime timestamp without time zone NOT NULL default (now() at time zone 'utc')
 );
+
+
+-- Note: Do not include foreign key constraint on accountuid.
+-- Uploading an existing account to server requires uploading the root file first, then the account.
+-- However, the file put triggers a put to journal, which errors because the account doesn't exist. 
 
 
 ---------------------------------------------------------------------------------------------
@@ -85,3 +94,46 @@ CREATE TABLE IF NOT EXISTS public.block
 	blocksize integer NOT NULL default 0,
 	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc')
 );
+
+
+-- Note: To avoid race conditions, the block itself should be uploaded BEFORE a block entry is created
+
+---------------------------------------------------------------------------------------------
+
+
+CREATE OR REPLACE FUNCTION insert_to_journal() RETURNS TRIGGER AS $journal_put$
+BEGIN
+	INSERT INTO journal (accountuid, fileuid, isdir, islink, filesize, fileblocks, isdeleted)
+	VALUES (NEW.accountuid, NEW.fileuid, NEW.isdir, NEW.islink, NEW.filesize, NEW.fileblocks, NEW.isdeleted);
+	RETURN NEW;
+END;
+
+
+CREATE TRIGGER file_insert_to_journal AFTER INSERT ON file 
+FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
+
+CREATE TRIGGER file_update_to_journal AFTER UPDATE ON file 
+FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
+
+
+
+
+
+CREATE OR REPLACE FUNCTION update_changetime() RETURNS TRIGGER AS $$
+BEGIN
+	NEW.changetime = (now() at time zone 'utc');
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER update_changetime_file BEFORE UPDATE ON file
+FOR EACH ROW EXECUTE PROCEDURE update_changetime();
+
+CREATE TRIGGER update_changetime_account BEFORE UPDATE ON account
+FOR EACH ROW EXECUTE PROCEDURE update_changetime();
+
+
+
+-- TODO We probably want to add an update cancel if an update contains the exact same data as the current row
+-- Skip update if new equals old 
