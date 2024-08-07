@@ -5,9 +5,6 @@ const {POOL} = require("../database/postgresPool");
 
 
 
-//TODO Update account
-
-
 
 router.get('/:id', async function(req, res, next) {
 	const accountUID = req.params.id;
@@ -15,10 +12,9 @@ router.get('/:id', async function(req, res, next) {
 
 
 	var sql =
-	`SELECT accountuid, email, displayname, 
-	rootfileuid, createtime FROM account
-	WHERE accountuid = '${accountUID}'
-	AND deletetime is null;`;
+	`SELECT accountuid, rootfileuid, email, displayname, 
+	isdeleted, logintime, createtime FROM account
+	WHERE accountuid = '${accountUID}'`;
 
 	(async () => {
 		const client = await POOL.connect();
@@ -46,60 +42,35 @@ router.get('/:id', async function(req, res, next) {
 //-----------------------------------------------------------------------------
 
 
-//TODO Email needs to be unique
-//Create a new account
-router.post('/', async function(req, res, next) {
-	console.log(`\nCREATE ACCOUNT called`);
-
+//Upsert an account
+router.put('/' , async function(req, res, next) {
+	console.log(`\nUPSERT ACCOUNT called`);
 	const body = req.body;
-	if(!body.email || !body.displayname || !body.password) {
-		console.log(`Account create request must contain an email, displayname, and password!`);
-		res.statusMessage = `Account create request must contain an email, displayname, and password!`;
-		return res.status(422).end();
-		//return res.status(422).send({ message: `Account create request must contain an email, displayname, and password!` });
-	}
 
+	
+	const allProps = ["accountuid", "rootfileuid", "email", "displayname", "password", 
+		"isdeleted", "logintime", "changetime", "createtime"];
 
-	//Grab the properties we care about
-	const usefulProps = ["email", "displayname", "password"];
-
-	var propHelper = [];
-	var valueHelper = [];
+	//Grab any valid properties passed in the response body
+	var props = [];
+	var vals = [];
 	for(const [key, val] of Object.entries(body)) {
-		if(val && usefulProps.includes(key)) {
-			propHelper.push(key);
-			valueHelper.push(`'${val}'`);
+		if(allProps.includes(key)) {
+			props.push(key);
+			vals.push(`'${val}'`);
 		}
 	}
 
+
+
+	const sql = `INSERT INTO account (${props.join(", ")}) VALUES (${vals.join(", ")}) RETURNING *;`;
+
 	
-	const sql = 
-	`WITH accountupdate AS
-	(
-		INSERT INTO account (${propHelper.join(", ")})
-		VALUES (${valueHelper.join(", ")})
-		RETURNING *
-	),
-	fileupdate AS 
-	(
-		INSERT INTO file (fileuid, owneruid, isdir)
-		SELECT rootfileuid, accountuid, true
-		FROM accountupdate
-		RETURNING *
-	), 
-	journalupdate AS 
-	(
-		INSERT INTO journal 
-		(fileuid, owneruid, filesize, fileblocks)
-		SELECT fileuid, owneruid, filesize, fileblocks
-		FROM fileupdate
-	)
-	SELECT accountuid, email, displayname, rootfileuid FROM accountupdate;`;
 
 	(async () => {
 		const client = await POOL.connect();
 		try {
-			console.log("Creating new account with sql -");
+			console.log("Upserting account with sql -");
 			console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
 			
 			var ret = await client.query(sql);
@@ -108,7 +79,11 @@ router.post('/', async function(req, res, next) {
 		} 
 		catch (err) {
 			
-			
+
+			console.log(err);
+			res.send(err);
+
+			/*
 			//If this email already exists, inform the client
 			if(err.code == '23505') {
 				console.log(`Account creation failed!`);
@@ -119,6 +94,7 @@ router.post('/', async function(req, res, next) {
 				console.log(err);
 				res.send(err);
 			}
+			*/
 		}
 		finally { client.release(); }
 	})();

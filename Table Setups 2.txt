@@ -5,6 +5,7 @@ Varchar is probably an inefficient type to store sha256 hashes
 ---------------------------------------------------------------------------------------------
 
 
+-- Note to self, make sure you're running these after connecting to the correct database
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO gallery;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO gallery;
 

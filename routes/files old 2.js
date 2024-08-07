@@ -6,6 +6,17 @@ const {POOL} = require('#root/database/postgresPool.js');
 const {IBMCOS, IBMCOSBucket} = require('#root/storage/IBMCOS');
 
 
+/*
+Notes: 
+
+Do we want to exlude deleted files?
+Thinking about trashed files, we could simply put a trashedtime in the ordering and that would suffice,
+Wait yeah that's it. If two dirs ref one fileuid, and one trashes it, we can't just delete it. 
+*/
+//TODO Require isDir and isLink to be 0:0, 1:0, or 0:1
+
+
+
 
 //Get the file properties
 router.get('/:id', async function(req, res, next) {
@@ -14,9 +25,10 @@ router.get('/:id', async function(req, res, next) {
 
 
 	var sql =
-	`SELECT fileuid, accountuid, isdir, islink, fileblocks, filesize, 
-	isdeleted, changetime, modifytime, accesstime, createtime FROM file
-	WHERE fileuid = '${fileUID}';`;
+	`SELECT fileuid, owneruid, isdir, islink, filesize, fileblocks, 
+	changetime, accesstime, modifytime, createtime FROM file
+	WHERE fileuid = '${fileUID}'
+	AND deletetime is null;`;
 
 	(async () => {
 		const client = await POOL.connect();
@@ -55,7 +67,7 @@ router.post('/', async function(req, res, next) {
 
 
 	//Grab the properties we care about
-	const usefulProps = ["accountuid", "isdir", "islink"];
+	const usefulProps = ["owneruid", "isdir", "islink"];
 
 	var propHelper = [];
 	var valueHelper = [];
