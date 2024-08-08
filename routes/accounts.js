@@ -124,9 +124,8 @@ router.put('/:id' , async function(req, res, next) {
 	const body = req.body;
 
 
-	//Accounts can be created on a local device, and then copied to the server later.
-	//We need to allow all columns to be sent to allow for that. 
-	const allProps = ["accountuid", "rootfileuid", "email", "displayname", "password", 
+	//Including accountuid in this list allows the accountuid to be changed, probably don't want
+	const allProps = [/*"accountuid", */"rootfileuid", "email", "displayname", "password", 
 		"isdeleted", "logintime", "changetime", "createtime"];
 
 	//Grab any valid properties passed in the response body
