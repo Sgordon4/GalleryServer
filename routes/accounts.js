@@ -43,7 +43,7 @@ router.get('/:id', async function(req, res, next) {
 //-----------------------------------------------------------------------------
 
 
-router.put('/' , async function(req, res, next) {
+router.put('/insert/' , async function(req, res, next) {
 	console.log(`\nINSERT ACCOUNT called`);
 	const body = req.body;
 
@@ -118,7 +118,7 @@ router.put('/' , async function(req, res, next) {
 //-----------------------------------------------------------------------------
 
 
-router.put('/:id' , async function(req, res, next) {
+router.put('/update/:id' , async function(req, res, next) {
 	console.log(`\nUPDATE ACCOUNT called`);
 	const accountUID = req.params.id;
 	const body = req.body;
@@ -143,16 +143,10 @@ router.put('/:id' , async function(req, res, next) {
 	if(props.length < 1) {
 		console.log(`Account update failed!`);
 		var errJson = `{"status" : "fail", "data" : null, "message" : `+
-		`"Account update requires at least one of the following columns: [${allProps.join(", ")}]"}`
+		`"Account update requires at least one of the following columns: [${allProps.join(', ')}]"}`
 		console.log(errJson);
 		return res.status(422).send(errJson);
 	}
-	for(var i = 0; i < reqInsert.length; i++) {
-		var column = reqInsert[i];
-		if(props.indexOf(column) == -1) {
-			
-		}
-	};
 
 
 	//Can't use parentheses with only one column

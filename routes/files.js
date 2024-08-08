@@ -44,56 +44,62 @@ router.get('/:id', async function(req, res, next) {
 
 
 //Create a new file
-router.post('/', async function(req, res, next) {
-	console.log(`\nCREATE FILE called`);
-
+router.put('/insert/', async function(req, res, next) {
+	console.log(`\nINSERT FILE called`);
 	const body = req.body;
-	if(!body.owneruid) {
-		console.log(`File create request must contain owneruid!`);
-		return res.status(422).send({ message: `File create request must contain owneruid!` });
-	}
 
 
-	//Grab the properties we care about
-	const usefulProps = ["accountuid", "isdir", "islink"];
+	//Files can be created on a local device, and then copied to the server later.
+	//We need to allow all columns to be sent to allow for that. 
+	const allProps = ["fileuid", "accountuid", "isdir", "islink", "fileblocks", "filesize", 
+		"isdeleted", "changetime", "modifytime", "accesstime", "createtime"]
+	const reqInsert = ["fileuid", "accountuid"];
 
-	var propHelper = [];
-	var valueHelper = [];
+	//Grab any valid properties passed in the response body
+	var props = [];
+	var vals = [];
 	for(const [key, val] of Object.entries(body)) {
-		if(val && usefulProps.includes(key)) {
-			propHelper.push(key);
-			valueHelper.push(`'${val}'`);
+		if(allProps.includes(key)) {
+			props.push(key);
+			vals.push(`'${val}'`);
 		}
 	}
 
+
+
+	//Make sure we have what we need to create the file
+	for(var i = 0; i < reqInsert.length; i++) {
+		var column = reqInsert[i];
+		if(props.indexOf(column) == -1) {
+			console.log(`File creation failed!`);
+			var errJson = `{"status" : "fail", `
+				+`"data" : {"${column}" : "File create request must contain ${column}!"}}`
+			console.log(errJson);
+			return res.status(422).send(errJson);
+		}
+	};
+
+
+
+	const sql = `INSERT INTO file (${props.join(", ")}) VALUES (${vals.join(", ")})
+			ON CONFLICT (fileuid) DO NOTHING
+			RETURNING *;`;
 	
-	const sql = 
-	`WITH fileupdate AS
-	(
-		INSERT INTO file (${propHelper.join(", ")})
-		VALUES (${valueHelper.join(", ")})
-		RETURNING *
-	),
-	journalupdate AS (
-		INSERT INTO journal
-		(fileuid, owneruid, filesize, fileblocks)
-		SELECT fileuid, owneruid, filesize, fileblocks
-		FROM fileupdate
-	)
-	SELECT fileuid, owneruid, isdir, islink, filesize, fileblocks, createtime FROM fileupdate;`;
 
 	(async () => {
 		const client = await POOL.connect();
 		try {
-			console.log("Creating new file with sql -");
+			console.log("Inserting file with sql -");
 			console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
 			
 			var ret = await client.query(sql);
 			res.send(ret.rows[0]);
 		} 
 		catch (err) {
-			console.error(err);
-			res.send(err);
+			console.log(`File creation failed!`);
+
+			console.log(err);
+			res.status(409).send(err);
 		}
 		finally { client.release(); }
 	})();
@@ -103,144 +109,62 @@ router.post('/', async function(req, res, next) {
 //-----------------------------------------------------------------------------
 
 
-//Update a file
-router.put('/:id', async function(req, res, next) {
-	//Not really anything to update but owneruid at the moment, idk
-	//Commit takes care of blocksets
-	res.send("Stub");
-});
-
-
-//-----------------------------------------------------------------------------
-
-
-//TODO This isn't updating the journal
-
-//Update a blockset
-router.put('/commit/:id', async function(req, res, next) {
+router.put('/update/:id' , async function(req, res, next) {
+	console.log(`\nUPDATE FILE called`);
 	const fileUID = req.params.id;
 	const body = req.body;
-	console.log(`\nCOMMIT FILE called with fileUID='${fileUID}'`);
 
 
-	console.log("Fileblocks:");
-	console.log(body.fileblocks);
-	
-	var fileblocks = [];
-	try {
-		fileblocks = JSON.parse(body.fileblocks);
-		if(!Array.isArray(fileblocks)) throw new Error('fileblocks is not an array!');
-	} catch (err) {
-		console.log(`File commit request must contain a JSON array of fileblocks!`);
-		return res.status(422).send({ message: `File commit request must contain a JSON array of fileblocks!` });
+	//Including fileuid in this list allows the fileuid to be changed, probably don't want
+	const allProps = [/*"fileuid", */"accountuid", "isdir", "islink", "fileblocks", "filesize", 
+		"isdeleted", "changetime", "modifytime", "accesstime", "createtime"]
+
+	//Grab any valid properties passed in the response body
+	var props = [];
+	var vals = [];
+	for(const [key, val] of Object.entries(body)) {
+		if(allProps.includes(key)) {
+			props.push(key);
+			vals.push(`'${val}'`);
+		}
 	}
 
-	
-	(async () => {
-		const client = await POOL.connect();
-		try {
 
-			var fileSize = 0;
-			if(fileblocks.length > 0) {
-				//Check that all blocks exist
-				var getblockssql = 
-				`SELECT blockhash, blocksize FROM block 
-				WHERE blockhash IN ('${fileblocks.join("', '")}');`;
-
-				console.log(`Fetching existing blocks with sql -`);
-				console.log(getblockssql.replaceAll("\t","").replaceAll("\n", " "));
-				var {rows} = await client.query(getblockssql);
+	//Make sure we have at least 1 column for the update
+	if(props.length < 1) {
+		console.log(`File update failed!`);
+		var errJson = `{"status" : "fail", "data" : null, "message" : `+
+		`"File update requires at least one of the following columns: [${allProps.join(', ')}]"}`
+		console.log(errJson);
+		return res.status(422).send(errJson);
+	}
 
 
-				var existingBlocks = rows.map(block => block.blockhash);
-				fileSize = rows.reduce((sum, block) => sum + block.blocksize, 0)
-				let missingblocks = fileblocks.filter(block => !existingBlocks.includes(block));
+	//Can't use parentheses with only one column
+	const pr = (props.length == 1) ? `${props[0]}` : `(${props.join(", ")})`;
+	const sql = `UPDATE file SET ${pr} = (${vals.join(", ")})
+			WHERE fileuid = '${fileUID}'
+			RETURNING *;`;
 
-				console.log(`Blocks:  [${fileblocks}]`);
-				console.log(`Missing: [${missingblocks}]`);
-
-
-				//If we don't have all the blocks, notify the client of the ones that are missing
-				if(missingblocks.length > 0) {
-					res.statusMessage = `Cannot commit, blocks are missing!`;
-					return res.status(400).send({"missingblocks":missingblocks}).end();
-					res.status(400).send({ message: `Cannot commit, blocks are missing!`, "missingblocks":missingblocks})
-					return;
-				}
-			}
-
-			
-
-			//Otherwise, we are ok-ed to update the file's blockset
-			var updateblocksetsql = 
-			`UPDATE file SET fileblocks = '{${fileblocks.map(block => `"${block}"`).join(`, `)}}',
-			filesize = ${fileSize}
-			WHERE fileuid = '${fileUID}';`
-
-			console.log(`Updating fileblocks with sql -`);
-			console.log(updateblocksetsql.replaceAll("\t","").replaceAll("\n", " "));
-			
-			var {rowCount} = await client.query(updateblocksetsql);
-
-
-			if(rowCount == 0)
-				res.sendStatus(404);
-			else
-				res.sendStatus(200);
-		} 
-		catch (err) {
-			console.error(err);
-			res.send(err);
-		}
-		finally { client.release(); }
-	})();
-});
-
-
-//-----------------------------------------------------------------------------
-
-
-//Delete a file (sets delete time, job picks it up later)
-router.delete('/:id', async function(req, res, next) {
-	const fileUID = req.params.id;
-	console.log(`\nDELETE FILE called with fileUID='${fileUID}'`);
-
-
-	const sql = 
-	`WITH fileupdate AS
-	(
-		UPDATE file
-		SET deletetime = (now() at time zone 'utc')
-		WHERE fileuid = '${fileUID}'
-		RETURNING *
-	),
-	journalupdate AS (
-		INSERT INTO journal
-		(fileuid, owneruid, filesize, fileblocks)
-		SELECT fileuid, owneruid, filesize, fileblocks
-		FROM fileupdate
-	)
-	SELECT fileuid, owneruid, isdir, islink, filesize, fileblocks, createtime FROM fileupdate;`;
 
 	(async () => {
 		const client = await POOL.connect();
 		try {
-			console.log("Deleting file with sql -");
+			console.log("Updating file with sql -");
 			console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
 			
-			await client.query(sql);			
-			res.sendStatus(200);
+			var ret = await client.query(sql);	
+			res.send(ret.rows[0]);
 		} 
 		catch (err) {
-			console.error(`Error deleting file: ${err.code} - ${err.message}\n`);
-			res.send(err);
-			//res.sendStatus(404);
+			console.log(`File update failed!`);
+		
+			console.log(err);
+			res.status(409).send(err);
 		}
 		finally { client.release(); }
 	})();
 });
-
-
 
 
 module.exports = router;
