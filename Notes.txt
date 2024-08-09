@@ -1,29 +1,4 @@
-Database changes:
-File -
-Add filesize and filehash
-
-
 Test encryption:
 Q5YSTvVkggjA9dTOzcsUxNwde2TGSGX3VS2MPGTjhIvL
-
-
-
-
-
-Gallery:
-- FileUID
-- Account
-- Parent
-- FileName
-- isDirectory
-- isSymbolicLink
-- LastUpdatedDate
-- Get File
-- Get Tags
-- Get Metadata
-- Put Tags
-- Put Metadata
-
-
 
 https://www.bigbinary.com/blog/configure-postgresql-to-allow-remote-connection
