@@ -14,7 +14,7 @@ https://cloud.ibm.com/docs/codeengine
 
 
 
-//Get a presigned GET url to access the block itself
+//Query the database to see if a block entry for this hash exists
 router.get('/exists/:hash', async function(req, res, next) {
 	const blockHash = req.params.hash;
 	console.log(`\nGET BLOCK EXISTS called with hash='${blockHash}'`);
@@ -42,7 +42,27 @@ router.get('/exists/:hash', async function(req, res, next) {
 
 //-----------------------------------------------------------------------------
 
-//Get a presigned GET url to access the block itself
+
+//Get a presigned GET url to access the get url
+router.get('/link/:hash', async function(req, res, next) {
+	const blockHash = req.params.hash;
+	console.log(`\nGET BLOCK called with hash='${blockHash}'`);
+
+	console.log(`Generating signed get url...`);
+	IBMCOS.getSignedUrlPromise('getObject', { 
+		Bucket: IBMCOSBucket, 
+		Key: blockHash, 
+		//Key: "smiley.png", 
+		Expires: 1200 //seconds 
+	})
+	.then(url => {
+		console.log(`Signed block get url generated: \n${url}`);
+		res.send(url);
+	});
+});
+
+
+//Get a presigned GET url to access the block itself (redirects instead of just sending)
 router.get('/:hash', async function(req, res, next) {
 	const blockHash = req.params.hash;
 	console.log(`\nGET BLOCK called with hash='${blockHash}'`);
@@ -52,7 +72,7 @@ router.get('/:hash', async function(req, res, next) {
 		Bucket: IBMCOSBucket, 
 		Key: blockHash, 
 		//Key: "smiley.png", 
-		Expires: 120 //seconds 
+		Expires: 1200 //seconds 
 	})
 	.then(url => {
 		console.log(`Signed block get url generated: \n${url}`);

@@ -31,7 +31,7 @@ var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/accounts');
 //var metadataRouter = require('./routes/metadata');
 var filesRouter = require('./routes/files');
-var filesUploadMultipartRouter = require('./routes/upload/multipart');
+//var filesUploadMultipartRouter = require('./routes/upload/multipart');
 var blockRouter = require('./routes/blocks');
 var journalRouter = require('./routes/journal');
 
@@ -39,7 +39,7 @@ app.use('/', indexRouter);
 app.use('/accounts', usersRouter);
 //app.use('/files/metadata', metadataRouter);
 app.use('/files', filesRouter);
-app.use('/files/upload/multipart', filesUploadMultipartRouter);
+//app.use('/files/upload/multipart', filesUploadMultipartRouter);
 app.use('/blocks', blockRouter);
 app.use('/journal', journalRouter);
 
