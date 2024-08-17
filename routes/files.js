@@ -7,6 +7,10 @@ const {IBMCOS, IBMCOSBucket} = require('#root/storage/IBMCOS');
 
 
 
+//TODO Remove insert and update, they have been replaced with upsert
+
+
+
 //Get the file properties
 router.get('/:id', async function(req, res, next) {
 	const fileUID = req.params.id;
@@ -14,7 +18,7 @@ router.get('/:id', async function(req, res, next) {
 
 
 	var sql =
-	`SELECT fileuid, accountuid, isdir, islink, fileblocks, filesize, 
+	`SELECT fileuid, accountuid, isdir, islink, fileblocks, filesize, filehash,
 	isdeleted, changetime, modifytime, accesstime, createtime FROM file
 	WHERE fileuid = '${fileUID}';`;
 
@@ -43,6 +47,77 @@ router.get('/:id', async function(req, res, next) {
 //-----------------------------------------------------------------------------
 
 
+//Upsert file
+router.put('/upsert/', async function(req, res, next) {
+	console.log(`\nUPSERT FILE called`);
+	const body = req.body;
+
+
+	//Files can be created on a local device, and then copied to the server later.
+	//We need to allow all columns to be sent to allow for that. 
+	const allProps = ["fileuid", "accountuid", "isdir", "islink", "fileblocks", "filesize", "filehash",
+		"isdeleted", "changetime", "modifytime", "accesstime", "createtime"]
+	const reqInsert = ["fileuid", "accountuid"];
+
+	//Grab any valid properties passed in the response body
+	var props = [];
+	var vals = [];
+	for(const [key, val] of Object.entries(body)) {
+		if(allProps.includes(key)) {
+			props.push(key);
+			vals.push(`'${val}'`);
+		}
+	}
+
+
+	//Make sure we have what we need to create a file
+	for(var i = 0; i < reqInsert.length; i++) {
+		var column = reqInsert[i];
+		if(props.indexOf(column) == -1) {
+			console.log(`File creation failed!`);
+			var errJson = `{"status" : "fail", `
+				+`"data" : {"${column}" : "File upsert request must contain ${column}!"}}`
+			console.log(errJson);
+			return res.status(422).send(errJson);
+		}
+	};
+
+
+
+	var sql = `INSERT INTO file (${props.join(", ")}) VALUES (${vals.join(", ")}) `;
+
+	//If changetime is not manually specified, we want to set it for the UPDATE part of the query
+	if(props.indexOf("changetime") == -1) {
+		props.push("changetime");
+		vals.push("(now() at time zone 'utc')");
+	}
+
+	sql += `ON CONFLICT (fileuid) DO UPDATE SET (${props.join(", ")}) = (${vals.join(", ")}) RETURNING *;`;
+
+
+	(async () => {
+		const client = await POOL.connect();
+		try {
+			console.log("Upserting file with sql -");
+			console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
+			
+			var ret = await client.query(sql);
+			res.send(ret.rows[0]);
+		} 
+		catch (err) {
+			console.log(`File upsert failed!`);
+
+			console.log(err);
+			res.status(409).send(err);
+		}
+		finally { client.release(); }
+	})();
+
+});
+
+
+//-----------------------------------------------------------------------------
+
 //Create a new file
 router.put('/insert/', async function(req, res, next) {
 	console.log(`\nINSERT FILE called`);
@@ -51,7 +126,7 @@ router.put('/insert/', async function(req, res, next) {
 
 	//Files can be created on a local device, and then copied to the server later.
 	//We need to allow all columns to be sent to allow for that. 
-	const allProps = ["fileuid", "accountuid", "isdir", "islink", "fileblocks", "filesize", 
+	const allProps = ["fileuid", "accountuid", "isdir", "islink", "fileblocks", "filesize", "filehash",
 		"isdeleted", "changetime", "modifytime", "accesstime", "createtime"]
 	const reqInsert = ["fileuid", "accountuid"];
 
@@ -116,8 +191,8 @@ router.put('/update/:id' , async function(req, res, next) {
 
 
 	//Including fileuid in this list allows the fileuid to be changed, probably don't want
-	const allProps = [/*"fileuid", */"accountuid", "isdir", "islink", "fileblocks", "filesize", 
-		"isdeleted", "changetime", "modifytime", "accesstime", "createtime"]
+	const allProps = [/*"fileuid", */"accountuid", "isdir", "islink", "fileblocks", "filesize",
+		"filehash", "isdeleted", "changetime", "modifytime", "accesstime", "createtime"]
 
 	//Grab any valid properties passed in the response body
 	var props = [];

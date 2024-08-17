@@ -14,6 +14,50 @@ https://cloud.ibm.com/docs/codeengine
 
 
 
+//Get block properties
+router.get('/props/', async function(req, res, next) {
+	var blockHashes = req.query.blockhash;
+	console.log(`\nGET BLOCK PROPS called with blockhashes='${blockHashes}'`);
+
+	
+	if(blockHashes.length < 1) {
+		console.log(`No blocks to retrieve!`);
+		var errJson = `{"status" : "fail", `
+			+`"data" : {"blockhash" : "Block properties get request must contain 1 or more blockhash!"}}`
+		console.log(errJson);
+		return res.status(422).send(errJson);
+	}
+ 
+	if(Array.isArray( blockHashes ))
+		blockHashes = blockHashes.join("', '");
+
+	var sql =
+	`SELECT * FROM block
+	WHERE blockhash in ('${blockHashes}');`;
+	//WHERE blockhash in ('${blockHashes.join("', '")}');`;
+
+	(async () => {
+		const client = await POOL.connect();
+		try {
+			console.log(`Fetching block properties with sql -`);
+			console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
+			const {rows} = await client.query(sql);
+
+
+			if(rows.length == 0)
+				res.sendStatus(404);
+			else
+				res.send(rows);
+		} 
+		catch (err) {
+			console.error(err);
+			res.send(err);
+		}
+		finally { client.release(); }
+	})();
+});
+
+/*
 //Query the database to see if a block entry for this hash exists
 router.get('/exists/:hash', async function(req, res, next) {
 	const blockHash = req.params.hash;
@@ -38,6 +82,7 @@ router.get('/exists/:hash', async function(req, res, next) {
 		finally { client.release(); }
 	})();
 });
+*/
 
 
 //-----------------------------------------------------------------------------
