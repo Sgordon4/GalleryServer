@@ -2,6 +2,8 @@ SELECT * FROM file;
 
 SELECT * FROM block;
 
+SELECT * FROM journal;
+
 
 INSERT INTO block (blockhash) values ('A');
 

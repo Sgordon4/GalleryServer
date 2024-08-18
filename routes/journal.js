@@ -13,7 +13,7 @@ router.get('/:startid', async function(req, res, next) {
 
 
 	var sql =
-	`SELECT journalid, fileuid, owneruid, filesize, fileblocks, changetime 
+	`SELECT journalid, fileuid, accountuid, isdir, islink, fileblocks, filesize, filehash, isdeleted, changetime 
 	FROM journal WHERE journalid > '${startID}';`;
 
 	(async () => {

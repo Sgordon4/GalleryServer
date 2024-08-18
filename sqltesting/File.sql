@@ -41,6 +41,21 @@ RETURNING *;
 
 
 
+CREATE OR REPLACE FUNCTION insert_to_journal() RETURNS TRIGGER AS $journal_put$
+BEGIN
+	INSERT INTO journal (accountuid, fileuid, isdir, islink, fileblocks, filesize, filehash, isdeleted)
+	VALUES (NEW.accountuid, NEW.fileuid, NEW.isdir, NEW.islink, NEW.fileblocks, NEW.filesize, NEW.filehash, NEW.isdeleted);
+	RETURN NEW;
+END;
+
+
+CREATE TRIGGER file_insert_to_journal AFTER INSERT ON file 
+FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
+
+CREATE TRIGGER file_update_to_journal AFTER UPDATE OF isdir, islink, fileblocks, filesize, filehash, isdeleted ON file 
+FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
+
+
 
 
 

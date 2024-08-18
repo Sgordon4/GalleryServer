@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS public.file
 	isdeleted boolean NOT NULL default false,
 	changetime timestamp without time zone,
 	modifytime timestamp without time zone,
-	accesstime timestamp without time zone,
+	accesstime timestamp without time zone,		--Maybe get rid of this one
 	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc')
 );
 
@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS public.journal
 	islink boolean NOT NULL default false,
 	fileblocks varchar[] NOT NULL default '{}',
 	filesize bigint NOT NULL default 0,
+	filehash varchar,
 	isdeleted boolean NOT NULL default false,
 	changetime timestamp without time zone NOT NULL default (now() at time zone 'utc')
 );
@@ -105,8 +106,8 @@ CREATE TABLE IF NOT EXISTS public.block
 
 CREATE OR REPLACE FUNCTION insert_to_journal() RETURNS TRIGGER AS $journal_put$
 BEGIN
-	INSERT INTO journal (accountuid, fileuid, isdir, islink, filesize, fileblocks, isdeleted)
-	VALUES (NEW.accountuid, NEW.fileuid, NEW.isdir, NEW.islink, NEW.filesize, NEW.fileblocks, NEW.isdeleted);
+	INSERT INTO journal (accountuid, fileuid, isdir, islink, fileblocks, filesize, filehash, isdeleted)
+	VALUES (NEW.accountuid, NEW.fileuid, NEW.isdir, NEW.islink, NEW.fileblocks, NEW.filesize, NEW.filehash, NEW.isdeleted);
 	RETURN NEW;
 END;
 
@@ -114,7 +115,8 @@ END;
 CREATE TRIGGER file_insert_to_journal AFTER INSERT ON file 
 FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
 
-CREATE TRIGGER file_update_to_journal AFTER UPDATE ON file 
+CREATE TRIGGER file_update_to_journal AFTER UPDATE 
+OF accountuid, isdir, islink, fileblocks, filesize, filehash, isdeleted ON file 
 FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
 
 
