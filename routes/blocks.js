@@ -15,7 +15,7 @@ https://cloud.ibm.com/docs/codeengine
 
 
 //Get block properties
-router.get('/props/', async function(req, res, next) {
+router.get('/props', async function(req, res, next) {
 	var blockHashes = req.query.blockhash;
 	console.log(`\nGET BLOCK PROPS called with blockhashes='${blockHashes}'`);
 
@@ -44,10 +44,7 @@ router.get('/props/', async function(req, res, next) {
 			const {rows} = await client.query(sql);
 
 
-			if(rows.length == 0)
-				res.sendStatus(404);
-			else
-				res.send(rows);
+			res.send(rows);
 		} 
 		catch (err) {
 			console.error(err);
