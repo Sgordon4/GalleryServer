@@ -34,7 +34,6 @@ router.get('/props', async function(req, res, next) {
 	var sql =
 	`SELECT * FROM block
 	WHERE blockhash in ('${blockHashes}');`;
-	//WHERE blockhash in ('${blockHashes.join("', '")}');`;
 
 	(async () => {
 		const client = await POOL.connect();
@@ -53,33 +52,6 @@ router.get('/props', async function(req, res, next) {
 		finally { client.release(); }
 	})();
 });
-
-/*
-//Query the database to see if a block entry for this hash exists
-router.get('/exists/:hash', async function(req, res, next) {
-	const blockHash = req.params.hash;
-	console.log(`\nGET BLOCK EXISTS called with hash='${blockHash}'`);
-
-	var sql =
-	`SELECT EXISTS(SELECT 1 FROM block WHERE blockhash='${blockHash}');`;
-
-	(async () => {
-		const client = await POOL.connect();
-		try {
-			console.log(`Fetching block exists with sql -`);
-			console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
-			const {rows} = await client.query(sql);
-
-			res.send(rows[0]);
-		} 
-		catch (err) {
-			console.error(err);
-			res.send(err);
-		}
-		finally { client.release(); }
-	})();
-});
-*/
 
 
 //-----------------------------------------------------------------------------
