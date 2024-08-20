@@ -14,7 +14,6 @@ SELECT * FROM journal;
 
 
 
-
 INSERT INTO file 
 (fileuid, accountuid, isdir)
 VALUES 
@@ -29,7 +28,7 @@ RETURNING *;
 INSERT INTO file 
 (fileuid, accountuid, isdir)
 VALUES 
-('f1a6b6e7-5414-4433-b6e5-77a0b7ecd12f', 'be204e60-adbe-420c-8c64-b153e129335d', TRUE)
+('45c61d9c-f444-47ac-8b1a-6008054f3dcd', '61776fe1-c7e8-4260-8b55-ba5b305c7dc5', TRUE)
 ON CONFLICT (fileuid)
 DO UPDATE SET
 (isdir, changetime)
@@ -49,6 +48,7 @@ BEGIN
 END;
 
 
+
 CREATE TRIGGER file_insert_to_journal AFTER INSERT ON file 
 FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
 
@@ -58,6 +58,33 @@ FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
 
 
 
+
+CREATE OR REPLACE FUNCTION unhide_file() RETURNS TRIGGER AS $$
+BEGIN
+	NEW.ishidden = FALSE;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+
+CREATE OR REPLACE TRIGGER unhide_on_update BEFORE UPDATE ON file
+FOR EACH ROW
+WHEN (OLD.ishidden = TRUE AND NEW.ishidden = FALSE)
+--WHEN ((OLD.ishidden = TRUE) AND (NEW.* IS DISTINCT FROM OLD.*))	-- Can't use, as what if we move l->s without updating?
+EXECUTE PROCEDURE unhide_file();
+
+
+
+SELECT * FROM file WHERE fileuid = '45c61d9c-f444-47ac-8b1a-6008054f3dcd';
+
+UPDATE file SET ishidden = TRUE WHERE fileuid = '45c61d9c-f444-47ac-8b1a-6008054f3dcd' RETURNING *;
+
+UPDATE file SET isdir = TRUE WHERE fileuid = '45c61d9c-f444-47ac-8b1a-6008054f3dcd' RETURNING *;
+
+UPDATE file SET isdir = FALSE WHERE fileuid = '45c61d9c-f444-47ac-8b1a-6008054f3dcd' RETURNING *;
 
 
 -------------------------------------------------------------------------------

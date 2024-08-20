@@ -20,7 +20,7 @@ router.get('/:id', async function(req, res, next) {
 	var sql =
 	`SELECT fileuid, accountuid, isdir, islink, fileblocks, filesize, filehash,
 	isdeleted, changetime, modifytime, accesstime, createtime FROM file
-	WHERE fileuid = '${fileUID}';`;
+	WHERE ishidden=false AND fileuid = '${fileUID}';`;
 
 	(async () => {
 		const client = await POOL.connect();
@@ -83,8 +83,11 @@ router.put('/upsert/', async function(req, res, next) {
 	};
 
 
-
 	var sql = `INSERT INTO file (${props.join(", ")}) VALUES (${vals.join(", ")}) `;
+
+	//Remove fileuid from properties as it should not be updated (fileuid is guaranteed to be the first element)
+	props.shift();
+	vals.shift();
 
 	//If changetime is not manually specified, we want to set it for the UPDATE part of the query
 	if(props.indexOf("changetime") == -1) {
@@ -92,7 +95,15 @@ router.put('/upsert/', async function(req, res, next) {
 		vals.push("(now() at time zone 'utc')");
 	}
 
-	sql += `ON CONFLICT (fileuid) DO UPDATE SET (${props.join(", ")}) = (${vals.join(", ")}) RETURNING *;`;
+	//Ensure the file is not hidden. If we move a file from s->l, the server file is 'deleted' by hiding it.
+	//However, if we go back from l->s, the file will still be hidden without this change below.
+	//Doing this via trigger on update has proven unsuccessful (possible, but touchy)
+	props.push("ishidden");
+	vals.push("false");
+
+
+
+	sql += `ON CONFLICT (fileuid) DO UPDATE SET (${props.join(", ")}) = (${vals.join(", ")}) RETURNING ${allProps.join(", ")};`;
 
 
 	(async () => {
@@ -118,6 +129,7 @@ router.put('/upsert/', async function(req, res, next) {
 
 //-----------------------------------------------------------------------------
 
+/*
 //Create a new file
 router.put('/insert/', async function(req, res, next) {
 	console.log(`\nINSERT FILE called`);
@@ -191,7 +203,7 @@ router.put('/update/:id' , async function(req, res, next) {
 
 
 	//Including fileuid in this list allows the fileuid to be changed, probably don't want
-	const allProps = [/*"fileuid", */"accountuid", "isdir", "islink", "fileblocks", "filesize",
+	const allProps = ["accountuid", "isdir", "islink", "fileblocks", "filesize",
 		"filehash", "isdeleted", "changetime", "modifytime", "accesstime", "createtime"]
 
 	//Grab any valid properties passed in the response body
@@ -240,6 +252,44 @@ router.put('/update/:id' , async function(req, res, next) {
 		finally { client.release(); }
 	})();
 });
+*/
+
+
+//-----------------------------------------------------------------------------
+
+
+//'Delete' the file by setting ishidden=true
+router.delete('/:id', function(req, res, next) {
+	const fileUID = req.params.id;
+	console.log(`\nDELETE FILE called with fileuid='${fileUID}'`);
+
+
+	const sql = 
+	`UPDATE file SET ishidden = true
+	WHERE fileuid = '${fileUID}'
+	RETURNING *`;
+
+	(async () => {
+		const client = await POOL.connect();
+		try {
+			console.log("Deleting file entry with sql -");
+			console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
+			const {rows} = await client.query(sql);
+
+
+			if(rows.length == 0)
+				res.sendStatus(404);
+			else
+				res.sendStatus(200);
+		} 
+		catch (err) {
+			console.error(err);
+			res.send(err);
+		}
+		finally { client.release(); }
+	})();
+});
+
 
 
 module.exports = router;
