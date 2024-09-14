@@ -6,6 +6,25 @@ const {POOL} = require('#root/database/postgresPool.js');
 const {IBMCOS, IBMCOSBucket} = require('#root/storage/IBMCOS');
 
 
+
+router.get('/longpoll/', async function(req, res, next) {
+	console.log(`\nLONGPOLLING!!`);
+
+	(async () => {
+		const client = await POOL.connect();
+		try {
+			res.sendStatus(200);
+		} 
+		catch (err) {
+			console.error(err);
+			res.send(err);
+		}
+		finally { client.release(); }
+	})();
+
+});
+
+
 //Get the journal entries in a journalID range
 router.get('/:startid', async function(req, res, next) {
 	const startID = req.params.startid;

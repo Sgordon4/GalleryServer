@@ -65,7 +65,7 @@ router.put('/upsert/', async function(req, res, next) {
 	for(const [key, val] of Object.entries(body)) {
 		if(allProps.includes(key)) {
 			props.push(key);
-			vals.push(`'${val}'`);
+			vals.push(`${val}`);
 		}
 	}
 
@@ -104,6 +104,10 @@ router.put('/upsert/', async function(req, res, next) {
 
 
 	sql += `ON CONFLICT (fileuid) DO UPDATE SET (${props.join(", ")}) = (${vals.join(", ")}) RETURNING ${allProps.join(", ")};`;
+
+	//Replace all double quotes with single, postgres doesn't like that.
+	//Note: We don't have any columns that use quotes internally atm, but this would cause problems for ones that do.
+	sql = sql.replace(/"/g, "'");
 
 
 	(async () => {
