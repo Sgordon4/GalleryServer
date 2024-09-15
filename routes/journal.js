@@ -43,16 +43,29 @@ router.get('/longpoll/:startid', async function(req, res, next) {
 
 			try {
 				try {
-					console.log(`Longpoll: checking journal for new entries -`);
+					console.log(`Longpoll checking journal for new entries -`);
 					console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
 					
+
+					if(tries == 4) {
+						sql =
+	`SELECT journalid, fileuid, accountuid, isdir, islink, fileblocks, filesize, filehash, isdeleted, changetime 
+	FROM journal WHERE journalid > '${startID}';`;
+					}
+
+
+
 					const {rows} = await client.query(sql);
 	
 	
 					//If we got new data back from the query, return it
 					if(rows.length != 0) {
+						console.log("New data found!")
 						res.send(rows);
+						return;		//And don't do anything else
 					}
+
+					console.log("No data received.")
 				}
 				finally { client.release(); }
 
@@ -60,19 +73,18 @@ router.get('/longpoll/:startid', async function(req, res, next) {
 
 				//If we got here, we didn't get any data back from the journal query. Sleep and then try again
 				if(tries > 0) {
-					console.log("SLEEPING!!")
+					console.log("Sleeping!")
 					await sleep(sleepTime);
 				}
 
 
 				//If the client aborts the connection, stop things
-				req.on('close',function(){
-					tries = 0;
-				});
+				if(req.closed)
+					return;
 			} 
 			catch (err) {
 				console.error(err);
-				res.send(err);
+				return res.send(err);	//Don't continue on error
 			}
 		} while(tries > 0);
 
