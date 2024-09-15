@@ -45,14 +45,6 @@ router.get('/longpoll/:startid', async function(req, res, next) {
 				try {
 					console.log(`Longpoll checking journal for new entries -`);
 					console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
-					
-
-					if(tries == 4) {
-						sql =
-	`SELECT journalid, fileuid, accountuid, isdir, islink, fileblocks, filesize, filehash, isdeleted, changetime 
-	FROM journal WHERE journalid > '${startID}';`;
-					}
-
 
 
 					const {rows} = await client.query(sql);
