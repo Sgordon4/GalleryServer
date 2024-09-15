@@ -82,7 +82,7 @@ router.get('/longpoll/:startid', async function(req, res, next) {
 
 
 		//Send a timeout response
-		res.sendStatus(502);
+		res.sendStatus(408);
 		console.log("Sent timeout");
 	})();
 });
