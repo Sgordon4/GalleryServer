@@ -4,25 +4,93 @@ var path = require('path');
 
 const {POOL} = require('#root/database/postgresPool.js');
 const {IBMCOS, IBMCOSBucket} = require('#root/storage/IBMCOS');
+const { time } = require('console');
 
 
 
-router.get('/longpoll/', async function(req, res, next) {
-	console.log(`\nLONGPOLLING!!`);
+
+//This function is pretty subpar, I just kind of threw it together. Definitely needs a touch-up.
+const sleepTime = 5 * 1000;
+router.get('/longpoll/:startid', async function(req, res, next) {
+	var startID = req.params.startid;
+	var accountUIDs = req.query.accountuid;
+
+	
+	//If multiple accounts were sent as quert params, combine them into one string
+	if(Array.isArray( accountUIDs )) 
+		accountUIDs = accountUIDs.join("', '");
+
+	console.log(`\nLONGPOLL JOURNAL called after JID='${startID}' for accounts='${accountUIDs}'`);
+
+		
+	
+	//Only include the account where clause if there are any accounts sent over in query params
+	var accSql = "";
+	if(accountUIDs != null)
+		accSql = ` AND accountuid in ('${accountUIDs}')`;
+
+
+	var sql =
+	`SELECT journalid, fileuid, accountuid, isdir, islink, fileblocks, filesize, filehash, isdeleted, changetime 
+	FROM journal WHERE journalid > '${startID}'${accSql};`;
+
 
 	(async () => {
-		const client = await POOL.connect();
-		try {
-			res.sendStatus(200);
-		} 
-		catch (err) {
-			console.error(err);
-			res.send(err);
-		}
-		finally { client.release(); }
-	})();
+		//Try to get new data from the Journal 6 times
+		var tries = 6;
+		do {
+			const client = await POOL.connect();
 
+			try {
+				try {
+					console.log(`Longpoll: checking journal for new entries -`);
+					console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
+					
+					const {rows} = await client.query(sql);
+	
+	
+					//If we got new data back from the query, return it
+					if(rows.length != 0) {
+						res.send(rows);
+					}
+				}
+				finally { client.release(); }
+
+				tries--;
+
+				//If we got here, we didn't get any data back from the journal query. Sleep and then try again
+				if(tries > 0) {
+					console.log("SLEEPING!!")
+					await sleep(sleepTime);
+				}
+
+
+				//If the client aborts the connection, stop things
+				req.on('close',function(){
+					tries = 0;
+				});
+			} 
+			catch (err) {
+				console.error(err);
+				res.send(err);
+			}
+		} while(tries > 0);
+
+
+		//Send a timeout response
+		res.sendStatus(502);
+		console.log("Sent timeout");
+	})();
 });
+
+function sleep(ms) {
+	return new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
+}
+
+
+
 
 
 //Get the journal entries in a journalID range
