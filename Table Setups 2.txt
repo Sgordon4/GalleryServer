@@ -30,13 +30,13 @@ CREATE TABLE IF NOT EXISTS public.file
 	islink boolean NOT NULL default false,
 	isdeleted boolean NOT NULL default false,
 	ishidden boolean NOT NULL default false,
-	userattr json,
+	userattr json NOT NULL default '{}',
 	fileblocks varchar[] NOT NULL default '{}',
 	filesize bigint NOT NULL default 0,
 	filehash varchar,
 	changetime timestamp without time zone NOT NULL default (now() at time zone 'utc'),
 	modifytime timestamp without time zone,
-	accesstime timestamp without time zone,		--Maybe get rid of this one
+	accesstime timestamp without time zone,		--Maybe get rid of this one, very inconvenient
 	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc'),
 	attrhash varchar
 );
@@ -113,8 +113,8 @@ CREATE TABLE IF NOT EXISTS public.account
 CREATE OR REPLACE FUNCTION hash_file_attributes() RETURNS TRIGGER AS $$
 BEGIN
 	NEW.attrhash := digest(concat(
-		NEW.fileuid, NEW.accountuid, NEW.isdir, NEW.islink, 
-		NEW.fileblocks, NEW.filesize, NEW.filehash, NEW.isdeleted,
+		NEW.fileuid, NEW.accountuid, NEW.isdir, NEW.islink, NEW.isdeleted, userattr,
+		NEW.fileblocks, NEW.filesize, NEW.filehash, 
 		NEW.changetime, NEW.modifytime, NEW.accesstime, NEW.createtime
 	), 'sha1');
 	RETURN NEW;
