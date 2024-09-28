@@ -8,6 +8,10 @@ const { time } = require('console');
 
 
 
+const journalFields = ["journalid", "fileuid", "accountuid", 
+	"fileblocks", "filehash", "attrhash", "changetime"]
+
+
 
 //This function is pretty subpar, I just kind of threw it together. Definitely needs a touch-up.
 const sleepTime = 5 * 1000;
@@ -31,7 +35,7 @@ router.get('/longpoll/:startid', async function(req, res, next) {
 
 
 	var sql =
-	`SELECT journalid, fileuid, accountuid, isdir, islink, fileblocks, filesize, filehash, isdeleted, changetime 
+	`SELECT journalid, fileuid, accountuid, fileblocks, filehash, attrhash, changetime 
 	FROM journal WHERE journalid > '${startID}'${accSql};`;
 
 
@@ -104,7 +108,7 @@ router.get('/:startid', async function(req, res, next) {
 
 
 	var sql =
-	`SELECT journalid, fileuid, accountuid, isdir, islink, fileblocks, filesize, filehash, isdeleted, changetime 
+	`SELECT journalid, fileuid, accountuid, fileblocks, filehash, attrhash, changetime 
 	FROM journal WHERE journalid > '${startID}';`;
 
 	(async () => {
@@ -132,7 +136,7 @@ router.get('/file/:id', async function(req, res, next) {
 
 
 	var sql =
-	`SELECT journalid, fileuid, accountuid, isdir, islink, fileblocks, filesize, filehash, isdeleted, changetime 
+	`SELECT journalid, fileuid, accountuid, fileblocks, filehash, attrhash, changetime 
 	FROM journal WHERE fileuid = '${fileUID}';`;
 
 	(async () => {

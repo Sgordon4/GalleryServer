@@ -1,19 +1,84 @@
-Notes:
-Varchar is probably an inefficient type to store sha256 hashes
+-- Notes:
+-- Varchar is probably an inefficient type to store sha256 hashes
 
 
 ---------------------------------------------------------------------------------------------
 
 
--- Note to self, make sure you're running these after connecting to the correct database
+-- Note to self, make sure you're running these after connecting to the correct database, moron
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO gallery;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO gallery;
 
 
-drop table if exists block;
 drop table if exists journal;
-drop table if exists file;
 drop table if exists account;
+drop table if exists file;
+drop table if exists block;
+
+	
+
+---------------------------------------------------------------------------------------------
+
+
+-- DROP TABLE IF EXISTS public.file;
+
+CREATE TABLE IF NOT EXISTS public.file
+(
+	fileuid uuid NOT NULL default gen_random_uuid() primary key,
+	accountuid uuid NOT NULL,
+	isdir boolean NOT NULL default false,
+	islink boolean NOT NULL default false,
+	isdeleted boolean NOT NULL default false,
+	ishidden boolean NOT NULL default false,
+	userattr json,
+	fileblocks varchar[] NOT NULL default '{}',
+	filesize bigint NOT NULL default 0,
+	filehash varchar,
+	changetime timestamp without time zone NOT NULL default (now() at time zone 'utc'),
+	modifytime timestamp without time zone,
+	accesstime timestamp without time zone,		--Maybe get rid of this one
+	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc'),
+	attrhash varchar
+);
+
+
+---------------------------------------------------------------------------------------------
+
+
+-- DROP TABLE IF EXISTS public.journal;
+
+CREATE TABLE IF NOT EXISTS public.journal
+(
+	journalid BIGSERIAL NOT NULL primary key,
+	fileuid uuid NOT NULL references file (fileuid),
+	accountuid uuid NOT NULL, --references account (accountuid),
+	fileblocks varchar[] NOT NULL default '{}',
+	filehash varchar,
+	attrhash varchar,
+	changetime timestamp without time zone NOT NULL default (now() at time zone 'utc')
+);
+
+
+
+-- Note: Do not include foreign key constraint on accountuid.
+-- Uploading an existing account to server requires uploading the root file first, then the account.
+-- However, the file put triggers a put to journal, which errors because the account doesn't exist. 
+
+
+---------------------------------------------------------------------------------------------
+
+
+-- DROP TABLE IF EXISTS public.block;
+
+CREATE TABLE IF NOT EXISTS public.block
+(
+	blockhash varchar NOT NULL primary key,
+	blocksize integer NOT NULL default 0,
+	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc')
+);
+
+
+-- Note: To avoid race conditions, the block itself should be uploaded BEFORE a block entry is created
 
 
 ---------------------------------------------------------------------------------------------
@@ -37,146 +102,49 @@ CREATE TABLE IF NOT EXISTS public.account
 
 -- Note: Creating an account entry requires that the rootfile already exist in the file table.
 -- This avoids race conditions and problems due to bad connection
-	
-
----------------------------------------------------------------------------------------------
-
-
--- DROP TABLE IF EXISTS public.file;
-
-CREATE TABLE IF NOT EXISTS public.file
-(
-	fileuid uuid NOT NULL default gen_random_uuid() primary key,
-	accountuid uuid NOT NULL,
-	isdir boolean NOT NULL default false,
-	islink boolean NOT NULL default false,
-	fileblocks varchar[] NOT NULL default '{}',
-	filesize bigint NOT NULL default 0,
-	filehash varchar,
-	isdeleted boolean NOT NULL default false,
-	changetime timestamp without time zone,
-	modifytime timestamp without time zone,
-	accesstime timestamp without time zone,		--Maybe get rid of this one
-	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc'),
-	ishidden boolean NOT NULL default false
-);
 
 
 ---------------------------------------------------------------------------------------------
 
 
--- DROP TABLE IF EXISTS public.journal;
-
-CREATE TABLE IF NOT EXISTS public.journal
-(
-	journalid BIGSERIAL NOT NULL primary key,
-	fileuid uuid NOT NULL references file (fileuid),
-	accountuid uuid NOT NULL --references account (accountuid), 
-	isdir boolean NOT NULL default false,
-	islink boolean NOT NULL default false,
-	fileblocks varchar[] NOT NULL default '{}',
-	filesize bigint NOT NULL default 0,
-	filehash varchar,
-	isdeleted boolean NOT NULL default false,
-	changetime timestamp without time zone NOT NULL default (now() at time zone 'utc')
-);
+-- Postgres runs triggers in alphabetical order
 
 
--- Note: Do not include foreign key constraint on accountuid.
--- Uploading an existing account to server requires uploading the root file first, then the account.
--- However, the file put triggers a put to journal, which errors because the account doesn't exist. 
-
-
----------------------------------------------------------------------------------------------
-
-
--- DROP TABLE IF EXISTS public.block;
-
-CREATE TABLE IF NOT EXISTS public.block
-(
-	blockhash varchar NOT NULL primary key,
-	blocksize integer NOT NULL default 0,
-	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc')
-);
-
-
--- Note: To avoid race conditions, the block itself should be uploaded BEFORE a block entry is created
-
----------------------------------------------------------------------------------------------
-
-
-CREATE OR REPLACE FUNCTION insert_to_journal() RETURNS TRIGGER AS $journal_put$
+CREATE OR REPLACE FUNCTION hash_file_attributes() RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO journal (accountuid, fileuid, isdir, islink, fileblocks, filesize, filehash, isdeleted)
-	VALUES (NEW.accountuid, NEW.fileuid, NEW.isdir, NEW.islink, NEW.fileblocks, NEW.filesize, NEW.filehash, NEW.isdeleted);
-	RETURN NEW;
-END;
-
-
-CREATE TRIGGER file_insert_to_journal AFTER INSERT ON file 
-FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
-
-CREATE TRIGGER file_update_to_journal AFTER UPDATE 
-OF accountuid, isdir, islink, fileblocks, filesize, filehash, isdeleted ON file 
-FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
-
-
-
-
-
-
-
-
-
-CREATE OR REPLACE FUNCTION update_changetime() RETURNS TRIGGER AS $$
-BEGIN
-	NEW.changetime := (now() at time zone 'utc');
+	NEW.attrhash := digest(concat(
+		NEW.fileuid, NEW.accountuid, NEW.isdir, NEW.islink, 
+		NEW.fileblocks, NEW.filesize, NEW.filehash, NEW.isdeleted,
+		NEW.changetime, NEW.modifytime, NEW.accesstime, NEW.createtime
+	), 'sha1');
 	RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
 
--- DO NOT USE
---CREATE TRIGGER update_changetime_file BEFORE UPDATE ON file
---FOR EACH ROW EXECUTE PROCEDURE update_changetime();
 
--- DO NOT USE
---CREATE TRIGGER update_changetime_account BEFORE UPDATE ON account
---FOR EACH ROW EXECUTE PROCEDURE update_changetime();
-
-
--- I've decided changetime should be a more manual change, 
--- especially since we need to directly set changetime when copying a file from local
+CREATE OR REPLACE TRIGGER file_hash_attr BEFORE INSERT ON file 
+FOR EACH ROW EXECUTE PROCEDURE hash_file_attributes();
 
 
 
 
 
--- DO NOT USE: It's way easier to actually do what I want if I just change the server endpoint to set ishidden=false for 
---  every upsert. It's super tricky to do this correctly via trigger.
--- This trigger unhides a file whenever any update is made to it (unless the update is changing ishidden from false -> true)
---  Moving a file from server -> local 'deletes' the server file by hiding it, but if we move back from local -> server
---  the file already exists and must be unhidden.
-
---CREATE OR REPLACE FUNCTION unhide_file() RETURNS TRIGGER AS $$
---BEGIN
---	NEW.ishidden := FALSE;
---	RETURN NEW;
---END;
---$$ LANGUAGE plpgsql;
-
-
---CREATE OR REPLACE TRIGGER unhide_on_update BEFORE UPDATE ON file
---FOR EACH ROW
---WHEN (OLD.ishidden = TRUE)
-----WHEN ((OLD.ishidden = TRUE) AND (NEW.* IS DISTINCT FROM OLD.*))	-- Can't use, as what if we move l->s without updating?
---EXECUTE PROCEDURE unhide_file();
+CREATE OR REPLACE FUNCTION insert_to_journal() RETURNS TRIGGER AS $$
+BEGIN
+	INSERT INTO journal (fileuid, accountuid, fileblocks, filehash, attrhash, changetime)
+	VALUES (NEW.fileuid, NEW.accountuid, NEW.fileblocks, NEW.filehash, NEW.attrhash, NEW.changetime);
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 
 
-old distinct new and new is hidden
+CREATE OR REPLACE TRIGGER file_insert_to_journal AFTER INSERT ON file 
+FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
+
+CREATE OR REPLACE TRIGGER file_update_to_journal AFTER UPDATE 
+OF attrhash ON file 
+FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
 
 
-
--- TODO We probably want to add an update cancel if an update contains the exact same data as the current row
--- Skip update if new equals old 

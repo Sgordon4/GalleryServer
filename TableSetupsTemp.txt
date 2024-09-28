@@ -1,0 +1,100 @@
+
+-- Old file
+
+CREATE TABLE IF NOT EXISTS public.file
+(
+	fileuid uuid NOT NULL default gen_random_uuid() primary key,
+	accountuid uuid NOT NULL,
+	isdir boolean NOT NULL default false,
+	islink boolean NOT NULL default false,
+	fileblocks varchar[] NOT NULL default '{}',
+	filesize bigint NOT NULL default 0,
+	filehash varchar,
+	isdeleted boolean NOT NULL default false,
+	changetime timestamp without time zone,
+	modifytime timestamp without time zone,
+	accesstime timestamp without time zone,		--Maybe get rid of this one
+	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc'),
+	ishidden boolean NOT NULL default false
+);
+
+
+---------------------------------------------------------------------------------------------
+
+-- Old Journal
+
+CREATE TABLE IF NOT EXISTS public.journal
+(
+	journalid BIGSERIAL NOT NULL primary key,
+	fileuid uuid NOT NULL references file (fileuid),
+	accountuid uuid NOT NULL --references account (accountuid), 
+	isdir boolean NOT NULL default false,
+	islink boolean NOT NULL default false,
+	fileblocks varchar[] NOT NULL default '{}',
+	filesize bigint NOT NULL default 0,
+	filehash varchar,
+	isdeleted boolean NOT NULL default false,
+	changetime timestamp without time zone NOT NULL default (now() at time zone 'utc')
+);
+
+
+
+---------------------------------------------------------------------------------------------
+
+-- Old triggers and functions
+
+
+
+CREATE OR REPLACE FUNCTION update_changetime() RETURNS TRIGGER AS $$
+BEGIN
+	NEW.changetime := (now() at time zone 'utc');
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- DO NOT USE
+--CREATE TRIGGER update_changetime_file BEFORE UPDATE ON file
+--FOR EACH ROW EXECUTE PROCEDURE update_changetime();
+
+-- DO NOT USE
+--CREATE TRIGGER update_changetime_account BEFORE UPDATE ON account
+--FOR EACH ROW EXECUTE PROCEDURE update_changetime();
+
+
+-- I've decided changetime should be a more manual change, 
+-- especially since we need to directly set changetime when copying a file from local
+
+
+
+
+
+
+-- DO NOT USE: It's way easier to actually do what I want if I just change the server endpoint to set ishidden=false for 
+--  every upsert. It's super tricky to do this correctly via trigger.
+-- This trigger unhides a file whenever any update is made to it (unless the update is changing ishidden from false -> true)
+--  Moving a file from server -> local 'deletes' the server file by hiding it, but if we move back from local -> server
+--  the file already exists and must be unhidden.
+
+--CREATE OR REPLACE FUNCTION unhide_file() RETURNS TRIGGER AS $$
+--BEGIN
+--	NEW.ishidden := FALSE;
+--	RETURN NEW;
+--END;
+--$$ LANGUAGE plpgsql;
+
+
+--CREATE OR REPLACE TRIGGER unhide_on_update BEFORE UPDATE ON file
+--FOR EACH ROW
+--WHEN (OLD.ishidden = TRUE)
+----WHEN ((OLD.ishidden = TRUE) AND (NEW.* IS DISTINCT FROM OLD.*))	-- Can't use, as what if we move l->s without updating?
+--EXECUTE PROCEDURE unhide_file();
+
+
+
+old distinct new and new is hidden
+
+
+
+-- TODO We probably want to add an update cancel if an update contains the exact same data as the current row
+-- Skip update if new equals old 
