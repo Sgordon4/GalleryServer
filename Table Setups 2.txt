@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS public.account
 CREATE OR REPLACE FUNCTION hash_file_attributes() RETURNS TRIGGER AS $$
 BEGIN
 	NEW.attrhash := digest(concat(
-		NEW.fileuid, NEW.accountuid, NEW.isdir, NEW.islink, NEW.isdeleted, userattr,
+		NEW.fileuid, NEW.accountuid, NEW.isdir, NEW.islink, NEW.isdeleted, NEW.userattr,
 		NEW.fileblocks, NEW.filesize, NEW.filehash, 
 		NEW.changetime, NEW.modifytime, NEW.accesstime, NEW.createtime
 	), 'sha1');
@@ -123,7 +123,12 @@ $$ LANGUAGE plpgsql;
 
 
 
-CREATE OR REPLACE TRIGGER file_hash_attr BEFORE INSERT ON file 
+CREATE OR REPLACE TRIGGER file_hash_attr_insert BEFORE INSERT ON file 
+FOR EACH ROW EXECUTE PROCEDURE hash_file_attributes();
+
+CREATE OR REPLACE TRIGGER file_hash_attr_update BEFORE UPDATE 
+OF isdir, islink, isdeleted, userattr, fileblocks, filesize, filehash, 
+changetime, modifytime, accesstime, createtime ON file 
 FOR EACH ROW EXECUTE PROCEDURE hash_file_attributes();
 
 
@@ -144,7 +149,7 @@ CREATE OR REPLACE TRIGGER file_insert_to_journal AFTER INSERT ON file
 FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
 
 CREATE OR REPLACE TRIGGER file_update_to_journal AFTER UPDATE 
-OF attrhash ON file 
+OF attrhash, fake ON file 
 FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
 
 
