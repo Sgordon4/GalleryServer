@@ -25,9 +25,7 @@ router.get('/:id', async function(req, res, next) {
 
 	var sql =
 	`SELECT fileuid, accountuid, isdir, islink, isdeleted, userattr, fileblocks, filesize, filehash,
-	extract(epoch from changetime) as changetime, extract(epoch from modifytime) as modifytime, 
-	extract(epoch from accesstime) as accesstime, extract(epoch from createtime) as createtime, 
-	attrhash FROM file
+	changetime, modifytime, accesstime, createtime, attrhash FROM file
 	WHERE ishidden=false AND fileuid = '${fileUID}';`;
 
 	(async () => {
