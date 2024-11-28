@@ -149,7 +149,7 @@ CREATE OR REPLACE TRIGGER file_insert_to_journal AFTER INSERT ON file
 FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
 
 CREATE OR REPLACE TRIGGER file_update_to_journal AFTER UPDATE 
-OF attrhash, fake ON file 
+OF attrhash ON file 
 FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
 
 

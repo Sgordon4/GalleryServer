@@ -25,7 +25,9 @@ router.get('/:id', async function(req, res, next) {
 
 	var sql =
 	`SELECT fileuid, accountuid, isdir, islink, isdeleted, userattr, fileblocks, filesize, filehash,
-	changetime, modifytime, accesstime, createtime, attrhash FROM file
+	extract(epoch from changetime) as changetime, extract(epoch from modifytime) as modifytime, 
+	extract(epoch from accesstime) as accesstime, extract(epoch from createtime) as createtime, 
+	attrhash FROM file
 	WHERE ishidden=false AND fileuid = '${fileUID}';`;
 
 	(async () => {
@@ -71,7 +73,14 @@ router.put('/upsert/', async function(req, res, next) {
 	for(const [key, val] of Object.entries(body)) {
 		if(allProps.includes(key)) {
 			props.push(key);
-			vals.push(`${val}`);
+
+			//Postgres array notation is ass
+			if(key == "fileblocks" && val[0] == "[")
+				vals.push(`ARRAY ${val}::varchar[]`);
+			else if(key == "userattr" && val[0] == "{")
+				vals.push(`'${val}'`);
+			else
+				vals.push(`${val}`);
 		}
 	}
 
@@ -116,7 +125,8 @@ router.put('/upsert/', async function(req, res, next) {
 
 	//Replace all double quotes with single, postgres doesn't like that.
 	//Note: We don't have any columns that use quotes internally atm, but this would cause problems for ones that do.
-	sql = sql.replace(/"/g, "'");
+	//sql = sql.replace(/"/g, "'");
+	sql = sql.replace(/""/g, "''");
 
 
 	(async () => {
