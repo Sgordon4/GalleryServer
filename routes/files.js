@@ -54,7 +54,7 @@ router.get('/:id', async function(req, res, next) {
 
 
 //Upsert file
-router.put('/upsert/', async function(req, res, next) {
+router.put('/upsert', async function(req, res, next) {
 	console.log(`\nUPSERT FILE called`);
 	const body = req.body;
 
@@ -119,7 +119,31 @@ router.put('/upsert/', async function(req, res, next) {
 
 
 
-	sql += `ON CONFLICT (fileuid) DO UPDATE SET (${props.join(", ")}) = (${vals.join(", ")}) RETURNING ${allProps.join(", ")};`;
+	sql += `ON CONFLICT (fileuid) DO UPDATE SET (${props.join(", ")}) = (${vals.join(", ")}) `;
+
+
+
+	//Compare filehash if one was included
+	var fileHashWhere;
+	if(req.query.prevfilehash == 'null')
+		fileHashWhere = `file.filehash IS NULL `
+	else if(req.query.prevfilehash != null) 
+		fileHashWhere = `file.filehash = '${req.query.prevfilehash}' `
+
+	//Compare attrhash if one was included
+	var attrHashWhere;
+	if(req.query.prevattrhash == 'null')
+		attrHashWhere = `file.attrhash IS NULL `
+	else if(req.query.prevattrhash != null) 
+		attrHashWhere = `file.attrhash = '${req.query.prevattrhash}' `
+
+	//Join them together into one WHERE statement as long as they aren't null
+	if(fileHashWhere != null || attrHashWhere != null)
+		sql += "WHERE " + [fileHashWhere, attrHashWhere].filter(Boolean).join("AND ");
+
+
+
+	sql += `RETURNING ${allProps.join(", ")};`;
 
 	//Replace all double quotes with single, postgres doesn't like that.
 	//Note: We don't have any columns that use quotes internally atm, but this would cause problems for ones that do.
