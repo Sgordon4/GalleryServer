@@ -158,6 +158,11 @@ router.put('/upsert', async function(req, res, next) {
 			console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
 			
 			var ret = await client.query(sql);
+
+			//If we don't get anything back, that means the insert failed (99% chance prevHashes don't match)
+			if(ret.rows.length == 0)
+				res.status(412).send("Hashes do not match");
+
 			res.send(ret.rows[0]);
 		} 
 		catch (err) {
