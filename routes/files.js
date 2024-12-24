@@ -108,7 +108,7 @@ router.put('/upsert', async function(req, res, next) {
 	//If changetime is not manually specified, we want to set it for the UPDATE part of the query
 	if(props.indexOf("changetime") == -1) {
 		props.push("changetime");
-		vals.push("(now() at time zone 'utc')");
+		vals.push("extract(epoch from date_trunc('second', (now() at time zone 'utc')))");
 	}
 
 	//Ensure the file is not hidden. If we move a file from s->l, the server file is 'deleted' by hiding it.

@@ -15,27 +15,26 @@ const journalFields = ["journalid", "fileuid", "accountuid",
 
 //This function is pretty subpar, I just kind of threw it together. Definitely needs a touch-up.
 const sleepTime = 5 * 1000;
-router.get('/longpoll/:startid', async function(req, res, next) {
-	var startID = req.params.startid;
+router.get('/longpoll/:startid', function(req, res, next) {
+	const startID = req.params.startid;
 	var accountUIDs = req.query.accountuid;
 
-	
-	//If multiple accounts were sent as quert params, combine them into one string
+
+	//If multiple accounts were sent as query params, combine them into one string
 	if(Array.isArray( accountUIDs )) 
 		accountUIDs = accountUIDs.join("', '");
 
 	console.log(`\nLONGPOLL JOURNAL called after JID='${startID}' for accounts='${accountUIDs}'`);
 
+
 		
-	
 	//Only include the account where clause if there are any accounts sent over in query params
-	var accSql = "";
+	const accSql = "";
 	if(accountUIDs != null)
 		accSql = ` AND accountuid in ('${accountUIDs}')`;
 
-
 	//Get the latest journalID for a file, along with the file information
-	var sql = 
+	const sql = 
 	`SELECT J.journalID, 
 	F.fileuid, F.accountuid, F.isdir, F.islink, F.isdeleted, 
 	F.userattr, F.fileblocks, F.filesize, F.filehash, 
@@ -50,6 +49,9 @@ router.get('/longpoll/:startid', async function(req, res, next) {
 	ON F.fileuid = J.fileuid;`
 
 
+	console.log("Sql: ");
+	console.log(sql);
+
 
 	/* Old sql
 	var sql =
@@ -59,12 +61,14 @@ router.get('/longpoll/:startid', async function(req, res, next) {
 
 
 	(async () => {
+		console.log("\nStarting");
 		//Try to get new data from the Journal 6 times
 		var tries = 6;
 		do {
 			const client = await POOL.connect();
 
 			try {
+				console.log("Polling...");
 				try {
 					console.log(`Longpoll checking journal for new entries -`);
 					console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
@@ -121,7 +125,7 @@ function sleep(ms) {
 
 
 //Get the journal entries in a journalID range
-router.get('/:startid', async function(req, res, next) {
+router.get('/:startid', function(req, res, next) {
 	const startID = req.params.startid;
 	console.log(`\nGET JOURNAL called with start='${startID}'`);
 
@@ -149,7 +153,7 @@ router.get('/:startid', async function(req, res, next) {
 
 
 //Get the journal entries for a specific fileuid
-router.get('/file/:id', async function(req, res, next) {
+router.get('/file/:id', function(req, res, next) {
 	const fileUID = req.params.id;
 	console.log(`\nGET JOURNAL BY FILEUID called with fileUID='${fileUID}'`);
 

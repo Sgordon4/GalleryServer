@@ -37,10 +37,10 @@ CREATE TABLE IF NOT EXISTS public.file
 	fileblocks varchar[] NOT NULL default '{}',
 	filesize bigint NOT NULL default 0,
 	filehash varchar,
-	changetime timestamp without time zone NOT NULL default (now() at time zone 'utc'),
-	modifytime timestamp without time zone,
-	accesstime timestamp without time zone,		--Maybe get rid of this one, very inconvenient
-	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc'),
+	changetime bigint NOT NULL default extract(epoch from date_trunc('second', (now() at time zone 'utc'))),
+	modifytime bigint,
+	accesstime bigint,		--Maybe get rid of this one, very inconvenient
+	createtime bigint NOT NULL default extract(epoch from date_trunc('second', (now() at time zone 'utc'))),
 	attrhash varchar
 );
 
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS public.journal
 	fileblocks varchar[] NOT NULL default '{}',
 	filehash varchar,
 	attrhash varchar,
-	changetime timestamp without time zone NOT NULL default (now() at time zone 'utc')
+	changetime bigint NOT NULL default extract(epoch from date_trunc('second', (now() at time zone 'utc')))
 );
 
 
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS public.block
 (
 	blockhash varchar NOT NULL primary key,
 	blocksize integer NOT NULL default 0,
-	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc')
+	createtime bigint NOT NULL default extract(epoch from date_trunc('second', (now() at time zone 'utc')))
 );
 
 
@@ -97,9 +97,9 @@ CREATE TABLE IF NOT EXISTS public.account
 	displayname varchar NOT NULL,
 	password varchar NOT NULL,
 	isdeleted boolean NOT NULL default false,
-	logintime timestamp without time zone,
-	changetime timestamp without time zone,
-	createtime timestamp without time zone NOT NULL default (now() at time zone 'utc')
+	logintime bigint,
+	changetime bigint,
+	createtime bigint NOT NULL default extract(epoch from date_trunc('second', (now() at time zone 'utc')))
 );
 
 

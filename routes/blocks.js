@@ -157,7 +157,7 @@ async function putBlock(blockHash, blocksize, res) {
 	`INSERT INTO block (blockhash, blocksize)
 	VALUES ('${blockHash}', '${blocksize}')
 	ON CONFLICT (blockhash) DO UPDATE 
-	SET blocksize = excluded.blocksize, createtime = (now() at time zone 'utc');`;
+	SET blocksize = excluded.blocksize, createtime = extract(epoch from date_trunc('second', (now() at time zone 'utc')));`;
 
 	(async () => {
 		const client = await POOL.connect();

@@ -40,5 +40,5 @@ VALUES
 ON CONFLICT (fileuid)
 DO UPDATE SET
 (isdir, changetime)
-= (TRUE, (now() at time zone 'utc'))
+= (TRUE, extract(epoch from date_trunc('second', (now() at time zone 'utc'))))
 RETURNING *;
