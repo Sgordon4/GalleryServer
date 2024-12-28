@@ -61,8 +61,8 @@ router.put('/upsert', async function(req, res, next) {
 
 	//Files can be created on a local device, and then copied to the server later.
 	//We need to allow all columns to be sent to allow for that. 
-	const allProps = ["fileuid", "accountuid", "isdir", "islink", "isdeleted", "userattr", 
-		"fileblocks", "filesize", "filehash", "changetime", "modifytime", "accesstime", "createtime"]
+	const allProps = ["fileuid", "accountuid", "isdir", "islink", "isdeleted", "userattr", "fileblocks", 
+		"filesize", "filehash", "changetime", "modifytime", "accesstime", "createtime", "attrhash"]
 	const reqInsert = ["fileuid", "accountuid"];
 
 	//Grab any valid properties passed in the response body
@@ -126,14 +126,14 @@ router.put('/upsert', async function(req, res, next) {
 	//Compare filehash if one was included
 	var fileHashWhere;
 	if(req.query.prevfilehash == 'null')
-		fileHashWhere = `file.filehash IS NULL `
+		fileHashWhere = `(file.filehash IS NULL OR file.ishidden IS true) `
 	else if(req.query.prevfilehash != null) 
 		fileHashWhere = `file.filehash = '${req.query.prevfilehash}' `
 
 	//Compare attrhash if one was included
 	var attrHashWhere;
 	if(req.query.prevattrhash == 'null')
-		attrHashWhere = `file.attrhash IS NULL `
+		attrHashWhere = `(file.attrhash IS NULL OR file.ishidden IS true) `
 	else if(req.query.prevattrhash != null) 
 		attrHashWhere = `file.attrhash = '${req.query.prevattrhash}' `
 
@@ -142,6 +142,8 @@ router.put('/upsert', async function(req, res, next) {
 		sql += "WHERE " + [fileHashWhere, attrHashWhere].filter(Boolean).join("AND ");
 
 
+	//NOTE: attrhash must be returned by this 'RETURNING ...' section or the journal trigger 
+	// will not work, as it won't find a changed attrhash in the returned props
 
 	sql += `RETURNING ${allProps.join(", ")};`;
 

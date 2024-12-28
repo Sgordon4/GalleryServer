@@ -150,9 +150,12 @@ DROP FUNCTION IF EXISTS insert_to_journal;
 
 CREATE OR REPLACE FUNCTION insert_to_journal() RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO journal (fileuid, accountuid, fileblocks, filehash, attrhash, changetime)
-	VALUES (NEW.fileuid, NEW.accountuid, NEW.fileblocks, NEW.filehash, NEW.attrhash, NEW.changetime);
-	RETURN NEW;
+	IF (NEW.attrhash IS DISTINCT FROM OLD.attrhash) OR (NEW.ishidden IS DISTINCT FROM OLD.ishidden) THEN
+		INSERT INTO journal (fileuid, accountuid, fileblocks, filehash, attrhash, changetime)
+		VALUES (NEW.fileuid, NEW.accountuid, NEW.fileblocks, NEW.filehash, NEW.attrhash, NEW.changetime);
+		RETURN NEW;
+	END IF;
+	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
