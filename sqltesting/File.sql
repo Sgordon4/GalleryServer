@@ -5,6 +5,7 @@ delete from file;
 
 delete from journal;
 
+DELETE FROM file WHERE fileuid = 'd79bee5d-1666-4d18-ae29-1bfba6bf0564';
 
 
 

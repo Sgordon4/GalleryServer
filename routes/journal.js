@@ -46,11 +46,11 @@ router.get('/longpoll/:startid', function(req, res, next) {
 		ORDER BY journalid
 	) J
 	LEFT JOIN file F
-	ON F.fileuid = J.fileuid;`
+	ON F.fileuid = J.fileuid;`;
 
 
-	console.log("Sql: ");
-	console.log(sql);
+	//console.log("Sql: ");
+	//console.log(sql);
 
 
 	/* Old sql
@@ -61,7 +61,6 @@ router.get('/longpoll/:startid', function(req, res, next) {
 
 
 	(async () => {
-		console.log("\nStarting");
 		//Try to get new data from the Journal 6 times
 		var tries = 6;
 		do {
@@ -70,8 +69,8 @@ router.get('/longpoll/:startid', function(req, res, next) {
 			try {
 				console.log("Polling...");
 				try {
-					console.log(`Longpoll checking journal for new entries -`);
-					console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
+					//console.log(`Longpoll checking journal for new entries -`);
+					//console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
 
 
 					const {rows} = await client.query(sql);

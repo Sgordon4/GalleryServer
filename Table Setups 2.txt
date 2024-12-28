@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS public.file
 CREATE TABLE IF NOT EXISTS public.journal
 (
 	journalid BIGSERIAL NOT NULL primary key,
-	fileuid uuid NOT NULL references file (fileuid),
+	fileuid uuid NOT NULL, --references file (fileuid),
 	accountuid uuid NOT NULL, --references account (accountuid),
 	fileblocks varchar[] NOT NULL default '{}',
 	filehash varchar,
@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS public.block
 CREATE TABLE IF NOT EXISTS public.account
 (
 	accountuid uuid NOT NULL default gen_random_uuid() primary key,
-	rootfileuid uuid NOT NULL references file (fileuid),
+	rootfileuid uuid NOT NULL, --references file (fileuid),
 	email varchar NOT NULL UNIQUE,
 	displayname varchar NOT NULL,
 	password varchar NOT NULL,
@@ -111,6 +111,10 @@ CREATE TABLE IF NOT EXISTS public.account
 
 
 -- Postgres runs triggers in alphabetical order
+
+DROP TRIGGER IF EXISTS file_hash_attr_insert ON file;
+DROP TRIGGER IF EXISTS file_hash_attr_update ON file;
+DROP FUNCTION IF EXISTS hash_file_attributes;
 
 
 CREATE OR REPLACE FUNCTION hash_file_attributes() RETURNS TRIGGER AS $$
@@ -138,6 +142,12 @@ FOR EACH ROW EXECUTE PROCEDURE hash_file_attributes();
 
 
 
+
+DROP TRIGGER IF EXISTS file_insert_to_journal ON file;
+DROP TRIGGER IF EXISTS file_update_to_journal ON file;
+DROP FUNCTION IF EXISTS insert_to_journal;
+
+
 CREATE OR REPLACE FUNCTION insert_to_journal() RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO journal (fileuid, accountuid, fileblocks, filehash, attrhash, changetime)
@@ -151,8 +161,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE TRIGGER file_insert_to_journal AFTER INSERT ON file 
 FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
 
-CREATE OR REPLACE TRIGGER file_update_to_journal AFTER UPDATE 
-OF attrhash ON file 
+CREATE OR REPLACE TRIGGER file_update_to_journal AFTER UPDATE OF attrhash ON file 
 FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
 
 
