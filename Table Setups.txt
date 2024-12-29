@@ -1,5 +1,5 @@
 -- Notes:
--- Varchar is probably an inefficient type to store sha256 hashes
+-- Varchar is probably a not-great type to store sha256 hashes, we should use bytea or something
 
 
 ---------------------------------------------------------------------------------------------
@@ -118,7 +118,7 @@ DROP FUNCTION IF EXISTS hash_file_attributes;
 
 CREATE OR REPLACE FUNCTION hash_file_attributes() RETURNS TRIGGER AS $$
 BEGIN
-	NEW.attrhash := digest(NEW.userattr::varchar, 'sha1');
+	NEW.attrhash := UPPER(encode(digest(NEW.userattr::varchar, 'sha1'), 'hex'));
 	RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
