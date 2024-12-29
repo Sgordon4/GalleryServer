@@ -7,13 +7,9 @@ const {IBMCOS, IBMCOSBucket} = require('#root/storage/IBMCOS');
 
 
 
-const fileFields = ["fileuid", "accountuid", "isdir", "islink", "isdeleted", "ishidden", "userattr", 
-"fileblocks", "filesize", "filehash", "changetime", "modifytime", "accesstime", "createtime", "attrhash"];
+const fileFields = ["fileuid", "accountuid", "isdir", "islink", "isdeleted", "fileblocks", "filesize", "filehash", 
+	"userattr", "attrhash", "changetime", "modifytime", "accesstime", "createtime"];
 
-
-
-
-//TODO Remove insert and update, they have been replaced with upsert
 
 
 
@@ -24,9 +20,9 @@ router.get('/:id', async function(req, res, next) {
 
 
 	var sql =
-	`SELECT fileuid, accountuid, isdir, islink, isdeleted, userattr, fileblocks, filesize, filehash,
-	changetime, modifytime, accesstime, createtime, attrhash FROM file
-	WHERE ishidden=false AND fileuid = '${fileUID}';`;
+	`SELECT fileuid, accountuid, isdir, islink, fileblocks, filesize, filehash,
+	userattr, attrhash, changetime, modifytime, accesstime, createtime FROM file
+	WHERE isdeleted=false AND fileuid = '${fileUID}';`;
 
 	(async () => {
 		const client = await POOL.connect();
@@ -61,8 +57,8 @@ router.put('/upsert', async function(req, res, next) {
 
 	//Files can be created on a local device, and then copied to the server later.
 	//We need to allow all columns to be sent to allow for that. 
-	const allProps = ["fileuid", "accountuid", "isdir", "islink", "isdeleted", "userattr", "fileblocks", 
-		"filesize", "filehash", "changetime", "modifytime", "accesstime", "createtime", "attrhash"]
+	const allProps = ["fileuid", "accountuid", "isdir", "islink", "fileblocks", "filesize", "filehash", 
+		"userattr", "attrhash", "changetime", "modifytime", "accesstime", "createtime"]
 	const reqInsert = ["fileuid", "accountuid"];
 
 	//Grab any valid properties passed in the response body
@@ -114,7 +110,7 @@ router.put('/upsert', async function(req, res, next) {
 	//Ensure the file is not hidden. If we move a file from s->l, the server file is 'deleted' by hiding it.
 	//However, if we go back from l->s, the file will still be hidden without this change below.
 	//Doing this via trigger on update has proven unsuccessful (possible, but touchy)
-	props.push("ishidden");
+	props.push("isdeleted");
 	vals.push("false");
 
 
@@ -126,14 +122,14 @@ router.put('/upsert', async function(req, res, next) {
 	//Compare filehash if one was included
 	var fileHashWhere;
 	if(req.query.prevfilehash == 'null')
-		fileHashWhere = `(file.filehash IS NULL OR file.ishidden IS true) `
+		fileHashWhere = `(file.filehash IS NULL OR file.isdeleted IS true) `
 	else if(req.query.prevfilehash != null) 
 		fileHashWhere = `file.filehash = '${req.query.prevfilehash}' `
 
 	//Compare attrhash if one was included
 	var attrHashWhere;
 	if(req.query.prevattrhash == 'null')
-		attrHashWhere = `(file.attrhash IS NULL OR file.ishidden IS true) `
+		attrHashWhere = `(file.attrhash IS NULL OR file.isdeleted IS true) `
 	else if(req.query.prevattrhash != null) 
 		attrHashWhere = `file.attrhash = '${req.query.prevattrhash}' `
 
@@ -182,14 +178,14 @@ router.put('/upsert', async function(req, res, next) {
 //-----------------------------------------------------------------------------
 
 
-//'Delete' the file by setting ishidden=true
+//'Delete' the file by setting isdeleted=true
 router.delete('/:id', function(req, res, next) {
 	const fileUID = req.params.id;
 	console.log(`\nDELETE FILE called with fileuid='${fileUID}'`);
 
 
 	const sql = 
-	`UPDATE file SET ishidden = true
+	`UPDATE file SET isdeleted = true
 	WHERE fileuid = '${fileUID}'
 	RETURNING *`;
 

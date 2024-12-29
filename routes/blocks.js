@@ -32,7 +32,7 @@ router.get('/props', async function(req, res, next) {
 		blockHashes = blockHashes.join("', '");
 
 	var sql =
-	`SELECT * FROM block
+	`SELECT blockhash, blocksize, createtime FROM block
 	WHERE blockhash in ('${blockHashes}');`;
 
 	(async () => {
