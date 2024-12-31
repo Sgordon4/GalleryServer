@@ -39,11 +39,11 @@ We should also be sending the md5 hash of each part with the Content-MD5 header 
 
 
 //Initiate multipart upload, get upload urls for each part
-router.get('/:id', async function(req, res, next) {
+router.get('/:fileName/:numparts', async function(req, res, next) {
 	console.log("\nGETTING MULTIPART URLS");
 
-	const fileUID = req.params.id;
-	const numberOfParts = req.query.numberOfParts || 0;
+	const fileName = req.params.fileName;
+	const numberOfParts = req.params.numparts || 0;
 	
 	if( numberOfParts < 2) {
 		return res.status(422).send({
@@ -53,13 +53,13 @@ router.get('/:id', async function(req, res, next) {
 
 
 	try {
-		console.log(`Attempting to generate UploadID for UID='${fileUID}'`);
+		console.log(`Attempting to generate UploadID for fileName='${fileName}'`);
 		const response = await IBMCOS.createMultipartUpload({
 			Bucket: IBMCOSBucket, 
-			Key: fileUID
+			Key: fileName
 		}).promise();
-		const UploadId = response.UploadId;
-		console.log(`Response returned with UploadId='${UploadId}'`);
+		const uploadID = response.UploadId;
+		console.log(`Response returned with UploadId='${uploadID}'`);
 
 
 		console.log(`Attempting to generate ${numberOfParts} put urls for UploadId`);
@@ -68,23 +68,19 @@ router.get('/:id', async function(req, res, next) {
 		for(let i = 0; i < numberOfParts; i++) {
 			const promise = IBMCOS.getSignedUrlPromise('uploadPart', {
 				Bucket: IBMCOSBucket,
-				Key: fileUID,
-				UploadId: UploadId,
+				Key: fileName,
+				UploadId: uploadID,
 				PartNumber: i + 1
 			});
 
 			promises.push(promise);
 		}
-		const urls = await Promise.all(promises);
+		const partURLs = await Promise.all(promises);
+		console.log("UploadID: '"+uploadID+"'");
 		console.log(`URLs generated!`);	//Maybe we do some null checks here
 
-		
-		const parts = urls.map((url, index) => ({
-			part: index + 1,
-			url: url
-		}));
 
-		res.status(200).json({ UploadId, parts });
+		res.status(200).json({ uploadID, partURLs });
 	} catch (e) {
 		console.log(e);
         next(e);
@@ -96,24 +92,32 @@ router.get('/:id', async function(req, res, next) {
 
 
 //Complete the multipart upload
-router.put('/:id', async function(req, res, next) { 
+router.put('/:fileName/:uploadID', async function(req, res, next) { 
 	console.log("\nCOMPLETING MULTIPART");
 
-	const fileUID = req.params.id;
-	const uploadId = req.body.uploadId;
-	const partsETags = JSON.parse(req.body.partsETags);
+	const fileName = req.params.fileName;
+	const uploadID = req.params.uploadID;
+	const etags = JSON.parse(req.body.ETags);
+
+	console.log(etags);
 	
 
+
+	
 	try {
 		await IBMCOS.completeMultipartUpload({
 			Bucket: IBMCOSBucket,
-			Key: fileUID,
-			UploadId: uploadId,
-			MultipartUpload: { Parts: partsETags }
+			Key: fileName,
+			UploadId: uploadID,
+			MultipartUpload: { Parts: etags }
 		}).promise();
 
-        return res.status(200).json(`Multipart upload for ${fileUID} completed successfully.`);
+        return res.status(200).json(`Multipart upload for ${fileName} completed successfully.`);
     } catch (e) {
+		if(e.code == "EntityTooSmall") {
+			res.status(400).send("Your proposed upload is smaller than the minimum allowed size. "+
+				"All parts but the last must be >= 5MB.");
+		}
 		console.log(e);
         next(e);
     }
@@ -124,23 +128,27 @@ router.put('/:id', async function(req, res, next) {
 
 
 //Abort the multipart upload
-router.delete('/:id', async function(req, res, next) { 
+router.delete('/:fileName/:uploadID', async function(req, res, next) { 
 	console.log("\nDELETING MULTIPART");
 
-	const fileUID = req.params.id;
-	const { uploadId } = req.query;
+	const fileName = req.params.fileName;
+	const uploadId = req.params.uploadID;
 
 	try {
 		await IBMCOS.abortMultipartUpload({
 			Bucket: IBMCOSBucket,
-			Key: fileUID,
+			Key: fileName,
 			UploadId: uploadId
 		}).promise();
 
-		return res.status(200).json(`Multipart upload for ${fileUID} aborted successfully.`);
+		return res.status(200).json(`Multipart upload for ${fileName} aborted successfully.`);
 	} catch (e) {
-		console.log(e);
-        next(e);
+		if(e.code == "NoSuchUpload")
+			res.sendStatus(404);
+		else {
+			console.log(e);
+			next(e);
+		}
     }
 });
 
@@ -148,26 +156,15 @@ router.delete('/:id', async function(req, res, next) {
 //-----------------------------------------------------------------------------
 
 
-//TODO This does not work lmao. How do you format ListMultipartUploads? 
-//Could not find it in 10 min. Whatever. Washed. Donezo. Hosed. Gone.
-
+//Gets all open but incomplete multipart upload requests
 router.get('/incomplete', async function(req, res, next) {
 	console.log(`\nGETTING INCOMPLETE MULTIPARTS`);
 
+	const activeUploads = await IBMCOS.listMultipartUploads({ 
+		Bucket: IBMCOSBucket
+	}).promise();
 
-	console.log(`Generating signed get url...`);
-	IBMCOS.ListMultipartUploads('getObject', { 
-		Bucket: IBMCOSBucket, 
-		// Key: fileUID, 
-		Expires: 60 //seconds
-	})
-	.then(url => {
-		console.log(`Signed url generated: \n${url}`);
-		res.redirect(url);
-	});
-
-
-	generateStateUpdateSQL(fileUID, "lastfileaccessdate");
+	res.send(activeUploads.Uploads);
 });
 
 
