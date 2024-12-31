@@ -114,7 +114,10 @@ router.put('/:fileName/:uploadID', async function(req, res, next) {
 
         return res.status(200).json(`Multipart upload for ${fileName} completed successfully.`);
     } catch (e) {
-		if(e.code == "EntityTooSmall") {
+		if(e.code == "NoSuchUpload") {
+			res.sendStatus(404);
+		}
+		else if(e.code == "EntityTooSmall") {
 			res.status(400).send("Your proposed upload is smaller than the minimum allowed size. "+
 				"All parts but the last must be >= 5MB.");
 		}
