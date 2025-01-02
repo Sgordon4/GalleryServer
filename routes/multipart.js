@@ -19,17 +19,7 @@ Fantastic resource for multipart uploading
 https://github.com/gustavares/cos-tutorial/blob/master/TUTORIAL.md#312-getpresignedurl-function
 
 ETags are the hex md5sum of each part.
-We should also be sending the md5 hash of each part with the Content-MD5 header so that s3
- refuses corrupted chunks.
 */
-
-
-//=============================================================================
-//
-// NOTE
-// Multipart uploads aren't really used as the system uses a chunking system with block sizes = 5MB
-//
-//=============================================================================
 
 
 
@@ -100,8 +90,6 @@ router.put('/:fileName/:uploadID', async function(req, res, next) {
 	const etags = JSON.parse(req.body.ETags);
 
 	console.log(etags);
-	
-
 
 	
 	try {

@@ -37,7 +37,7 @@ ON CONFLICT (fileuid)
 DO UPDATE SET (accountuid, isdeleted, changetime, ishidden, filehash) = 
 ('61776fe1-c7e8-4260-8b55-ba5b305c7dc5', false, extract(epoch from date_trunc('second', (now() at time zone 'utc'))), FALSE, '1123456789') 
 WHERE file.filehash = null
-RETURNING fileuid, accountuid, isdir, islink, isdeleted, userattr, fileblocks, filesize, filehash, 
+RETURNING fileuid, accountuid, isdir, islink, isdeleted, userattr, filesize, filehash, 
 changetime, modifytime, accesstime, createtime;
 
 
@@ -48,7 +48,7 @@ ON CONFLICT (fileuid)
 DO UPDATE SET (accountuid, isdeleted, changetime, ishidden, ) = 
 ('61776fe1-c7e8-4260-8b55-ba5b305c7dc5', false, extract(epoch from date_trunc('second', (now() at time zone 'utc'))), FALSE) 
 WHERE EXCLUDED.filehash is null 
-RETURNING fileuid, accountuid, isdir, islink, isdeleted, userattr, fileblocks, filesize, filehash, 
+RETURNING fileuid, accountuid, isdir, islink, isdeleted, userattr, filesize, filehash, 
 changetime, modifytime, accesstime, createtime;
 
 

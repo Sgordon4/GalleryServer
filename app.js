@@ -27,21 +27,27 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+
+
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/accounts');
 //var metadataRouter = require('./routes/metadata');
 var filesRouter = require('./routes/files');
-var blockRouter = require('./routes/blocks');
-var filesUploadMultipartRouter = require('./routes/multipart');
 var journalRouter = require('./routes/journal');
+var contentPropsRouter = require('./routes/contentProps');
+var contentDataRouter = require('./routes/content');
+var contentDataMultipartRouter = require('./routes/multipart');
 
 app.use('/', indexRouter);
 app.use('/accounts', usersRouter);
 //app.use('/files/metadata', metadataRouter);
 app.use('/files', filesRouter);
-app.use('/blocks', blockRouter);
-app.use('/multipart', filesUploadMultipartRouter);
 app.use('/journal', journalRouter);
+app.use('/content', contentPropsRouter);
+app.use('/content/data', contentDataRouter);
+app.use('/content/data/multipart', contentDataMultipartRouter);
+
+
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

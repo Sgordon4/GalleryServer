@@ -16,6 +16,8 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE ON SEQUENCES TO gallery;
 drop table if exists journal;
 drop table if exists account;
 drop table if exists file;
+drop table if exists content;
+
 drop table if exists block;
 
 	
@@ -32,7 +34,6 @@ CREATE TABLE IF NOT EXISTS public.file
 	isdir boolean NOT NULL default false,
 	islink boolean NOT NULL default false,
 	isdeleted boolean NOT NULL default false,
-	fileblocks varchar[] NOT NULL default '{}',
 	filesize bigint NOT NULL default 0,
 	filehash varchar,
 	userattr json NOT NULL default '{}',
@@ -69,18 +70,18 @@ CREATE TABLE IF NOT EXISTS public.journal
 ---------------------------------------------------------------------------------------------
 
 
--- DROP TABLE IF EXISTS public.block;
+-- DROP TABLE IF EXISTS public.content;
 
-CREATE TABLE IF NOT EXISTS public.block
+CREATE TABLE IF NOT EXISTS public.content
 (
-	blockhash varchar NOT NULL primary key,
-	blocksize integer NOT NULL default 0,
+	name varchar NOT NULL primary key,
+	size integer NOT NULL default 0,
 	createtime bigint NOT NULL default extract(epoch from date_trunc('second', (now() at time zone 'utc'))), 
 	usecount integer NOT NULL default 0
 );
 
 
--- Note: To avoid race conditions, the block itself should be uploaded BEFORE a block entry is created
+-- Note: To avoid race conditions, the content itself should be uploaded BEFORE a table entry is created
 
 
 ---------------------------------------------------------------------------------------------

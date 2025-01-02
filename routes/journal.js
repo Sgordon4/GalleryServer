@@ -39,34 +39,6 @@ router.get('/longpoll/:startid', function(req, res, next) {
 	FROM journal WHERE journalid > '${startID}'${accSql}
 	GROUP BY fileuid ORDER BY journalid;`;
 
-	/*
-	//Get the latest journalID for a file, along with the file information
-	const sql = 
-	`SELECT J.journalID, 
-	F.fileuid, F.accountuid, F.isdir, F.islink,
-	F.fileblocks, F.filesize, F.filehash, F.userattr, F.attrhash,
-	F.changetime, F.modifytime, F.accesstime, F.createtime
-	FROM (
-		select max(journalid) AS journalid, fileuid from journal 
-		WHERE journalid > '${startID}'${accSql}
-		GROUP BY fileuid 
-		ORDER BY journalid
-	) J
-	LEFT JOIN file F
-	ON F.fileuid = J.fileuid;`;
-	*/
-
-
-	//console.log("Sql: ");
-	//console.log(sql);
-
-
-	/* Old sql
-	var sql =
-	`SELECT journalid, fileuid, accountuid, fileblocks, filehash, attrhash, changetime 
-	FROM journal WHERE journalid > '${startID}'${accSql};`;
-	*/
-
 
 	(async () => {
 		//Try to get new data from the Journal 6 times

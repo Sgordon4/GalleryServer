@@ -7,7 +7,7 @@ const {IBMCOS, IBMCOSBucket} = require('#root/storage/IBMCOS');
 
 
 
-const fileFields = ["fileuid", "accountuid", "isdir", "islink", "isdeleted", "fileblocks", "filesize", "filehash", 
+const fileFields = ["fileuid", "accountuid", "isdir", "islink", "isdeleted", "filesize", "filehash", 
 	"userattr", "attrhash", "changetime", "modifytime", "accesstime", "createtime"];
 
 
@@ -20,7 +20,7 @@ router.get('/:id', async function(req, res, next) {
 
 
 	var sql =
-	`SELECT fileuid, accountuid, isdir, islink, fileblocks, filesize, filehash,
+	`SELECT fileuid, accountuid, isdir, islink, filesize, filehash,
 	userattr, attrhash, changetime, modifytime, accesstime, createtime FROM file
 	WHERE isdeleted=false AND fileuid = '${fileUID}';`;
 
@@ -50,14 +50,14 @@ router.get('/:id', async function(req, res, next) {
 
 
 //Upsert file
-router.put('/upsert', async function(req, res, next) {
+router.put('/', async function(req, res, next) {
 	console.log(`\nUPSERT FILE called`);
 	const body = req.body;
 
 
 	//Files can be created on a local device, and then copied to the server later.
 	//We need to allow all columns to be sent to allow for that. 
-	const allProps = ["fileuid", "accountuid", "isdir", "islink", "fileblocks", "filesize", "filehash", 
+	const allProps = ["fileuid", "accountuid", "isdir", "islink", "filesize", "filehash", 
 		"userattr", "attrhash", "changetime", "modifytime", "accesstime", "createtime"]
 	const reqInsert = ["fileuid", "accountuid"];
 
@@ -69,9 +69,7 @@ router.put('/upsert', async function(req, res, next) {
 			props.push(key);
 
 			//Postgres array notation is ass
-			if(key == "fileblocks" && val[0] == "[")
-				vals.push(`ARRAY ${val}::varchar[]`);
-			else if(key == "userattr" && val[0] == "{")
+			if(key == "userattr" && val[0] == "{")
 				vals.push(`'${val}'`);
 			else
 				vals.push(`${val}`);
