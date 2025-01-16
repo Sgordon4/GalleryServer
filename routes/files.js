@@ -53,7 +53,7 @@ router.get('/:id', async function(req, res, next) {
 router.put('/', async function(req, res, next) {
 	console.log(`\nUPSERT FILE called`);
 	const body = req.body;
-
+	
 
 	//Files can be created on a local device, and then copied to the server later.
 	//We need to allow all columns to be sent to allow for that. 
@@ -61,38 +61,48 @@ router.put('/', async function(req, res, next) {
 		"userattr", "attrhash", "changetime", "modifytime", "accesstime", "createtime"]
 	const reqInsert = ["fileuid", "accountuid"];
 
-	//Grab any valid properties passed in the response body
-	var props = [];
-	var vals = [];
-	for(const [key, val] of Object.entries(body)) {
-		if(allProps.includes(key)) {
-			props.push(key);
 
-			//Postgres array notation is ass
-			if(key == "userattr" && val[0] == "{")
-				vals.push(`'${val}'`);
-			else
-				vals.push(`${val}`);
+	//Make sure we have what we need to create a file
+	for(const column of reqInsert) {
+		if(body[column] == undefined) {
+		//if(passedEntries.indexOf(column) == -1) {
+			console.log(`File creation failed!`);
+			var errJson = `{"status" : "fail", "data" : {"${column}" : "File upsert request must contain ${column}!"}}`
+			console.log(errJson);
+			return res.status(422).send(errJson);
 		}
 	}
 
 
-	//Make sure we have what we need to create a file
-	for(var i = 0; i < reqInsert.length; i++) {
-		var column = reqInsert[i];
-		if(props.indexOf(column) == -1) {
-			console.log(`File creation failed!`);
-			var errJson = `{"status" : "fail", `
-				+`"data" : {"${column}" : "File upsert request must contain ${column}!"}}`
-			console.log(errJson);
-			return res.status(422).send(errJson);
-		}
-	};
+
+	//Grab any valid properties passed in the response body
+	var props = [];
+	var vals = [];
+	
+	//We want every property included, even if they were not passed.
+	for(const key of allProps) {
+		var val = body[key];
+
+		//If a property was not passed, set it to its default. 
+		//WARNING: This could backfire if this isn't considered when sending properties. Will be fine for our purposes.
+		if(val == undefined)
+			val = "DEFAULT";
+
+		props.push(key);
+
+		//Postgres array notation is ass
+		if(key == "userattr" && val == "{")
+			vals.push(`'${val}'`);
+		else
+			vals.push(`${val}`);
+	}
+	
 
 
 	var sql = `INSERT INTO file (${props.join(", ")}) VALUES (${vals.join(", ")}) `;
 
 
+	
 	//Edit values for the UPDATE part of the sql ----------------------------
 	
 	//Remove fileuid from properties as it should not be updated (fileuid is guaranteed to be the first element)
@@ -119,14 +129,14 @@ router.put('/', async function(req, res, next) {
 
 	//Compare filehash if one was included
 	var fileHashWhere;
-	if(req.query.prevfilehash == 'null')
+	if(req.query.prevfilehash == undefined)
 		fileHashWhere = `(file.filehash IS NULL OR file.isdeleted IS true) `
 	else if(req.query.prevfilehash != null) 
 		fileHashWhere = `file.filehash = '${req.query.prevfilehash}' `
 
 	//Compare attrhash if one was included
 	var attrHashWhere;
-	if(req.query.prevattrhash == 'null')
+	if(req.query.prevattrhash == undefined)
 		attrHashWhere = `(file.attrhash IS NULL OR file.isdeleted IS true) `
 	else if(req.query.prevattrhash != null) 
 		attrHashWhere = `file.attrhash = '${req.query.prevattrhash}' `

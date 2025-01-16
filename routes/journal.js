@@ -35,9 +35,11 @@ router.get('/longpoll/:startid', function(req, res, next) {
 
 	//Dont actually know if this works
 	const sql =
-	`SELECT max(journalid), fileuid, accountuid, filehash, attrhash, changetime 
+	`SELECT DISTINCT ON (fileuid) 
+	journalid, fileuid, accountuid, filehash, attrhash, changetime 
 	FROM journal WHERE journalid > '${startID}'${accSql}
-	GROUP BY fileuid ORDER BY journalid;`;
+	ORDER BY fileuid DESC;`;
+	
 
 
 	(async () => {
@@ -62,18 +64,14 @@ router.get('/longpoll/:startid', function(req, res, next) {
 						res.send(rows);
 						return;		//And don't do anything else
 					}
-
-					console.log("No data received.")
 				}
 				finally { client.release(); }
 
 				tries--;
 
 				//If we got here, we didn't get any data back from the journal query. Sleep and then try again
-				if(tries > 0) {
-					console.log("Sleeping!")
+				if(tries > 0) 
 					await sleep(sleepTime);
-				}
 
 
 				//If the client aborts the connection, stop things
