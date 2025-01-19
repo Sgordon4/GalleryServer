@@ -20,7 +20,7 @@ drop table if exists content;
 
 drop table if exists block;
 
-	
+
 
 ---------------------------------------------------------------------------------------------
 
@@ -35,9 +35,9 @@ CREATE TABLE IF NOT EXISTS public.file
 	islink boolean NOT NULL default false,
 	isdeleted boolean NOT NULL default false,
 	filesize bigint NOT NULL default 0,
-	filehash varchar,
+	checksum varchar NOT NULL default 'E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855',
 	userattr json NOT NULL default '{}',
-	attrhash varchar,
+	attrhash varchar NOT NULL default '44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A',
 	changetime bigint NOT NULL default extract(epoch from date_trunc('second', (now() at time zone 'utc'))),
 	modifytime bigint,
 	accesstime bigint,		--Maybe get rid of this one, very inconvenient
@@ -119,7 +119,7 @@ DROP FUNCTION IF EXISTS hash_file_attributes;
 
 CREATE OR REPLACE FUNCTION hash_file_attributes() RETURNS TRIGGER AS $$
 BEGIN
-	NEW.attrhash := UPPER(encode(digest(NEW.userattr::varchar, 'sha1'), 'hex'));
+	NEW.attrhash := UPPER(encode(digest(NEW.userattr::varchar, 'sha256'), 'hex'));
 	RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
