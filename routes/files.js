@@ -49,6 +49,98 @@ router.get('/:id', async function(req, res, next) {
 //-----------------------------------------------------------------------------
 
 
+
+router.put('/create', async function(req, res, next) {
+	console.log(`\nCREATE FILE called`);
+	const body = req.body;
+
+
+	//Files can be created on a local device, and then copied to the server later.
+	//We need to allow all columns to be sent to allow for that. 
+	const allProps = ["fileuid", "accountuid", "isdir", "islink", "filesize", "filehash", 
+		"userattr", "attrhash", "changetime", "modifytime", "accesstime", "createtime"]
+	const reqInsert = ["fileuid", "accountuid"];
+
+	//Make sure we have what we need to create a file
+	for(const column of reqInsert) {
+		if(body[column] == undefined) {
+			console.log(`File creation missing required components!`);
+			var errJson = `{"status" : "fail", "data" : {"${column}" : "File upsert request must contain ${column}!"}}`
+			console.log(errJson);
+			return res.status(422).send(errJson);
+		}
+	}
+
+
+	//Grab any valid properties passed in the response body
+	var props = [];
+	var vals = [];
+	
+	//We want every property included, even if they were not passed.
+	for(const key of allProps) {
+		var val = body[key];
+
+		//If a property was not passed, set it to its default. 
+		if(val == undefined)
+			val = "DEFAULT";		//Should we just "continue;"?
+
+		props.push(key);
+
+		//Postgres array notation is ass
+		if(key == "userattr" && val == "{")
+			vals.push(`'${val}'`);
+		else
+			vals.push(`${val}`);
+	}
+
+
+	var sql = `INSERT INTO file (${props.join(", ")}) VALUES (${vals.join(", ")}) `;
+
+
+
+
+});
+
+
+router.put('/update/content', async function(req, res, next) {
+	console.log(`\nUPDATE FILE CONTENT called`);
+	const body = req.body;
+});
+
+router.put('/update/attrs', async function(req, res, next) {
+	console.log(`\nUPDATE FILE ATTRS called`);
+	const body = req.body;
+});
+
+router.put('/update/timestamps', async function(req, res, next) {
+	console.log(`\nUPDATE FILE TIMESTAMPS called`);
+	const body = req.body;
+});
+
+
+router.put('/delete', async function(req, res, next) {
+	console.log(`\nDELETE FILE called`);
+	const body = req.body;
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//-----------------------------------------------------------------------------
+
+
 //Upsert file
 router.put('/', async function(req, res, next) {
 	console.log(`\nUPSERT FILE called`);
