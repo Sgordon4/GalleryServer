@@ -1,12 +1,5 @@
 var express = require('express');
-const { ExpressValidator } = require('express-validator');
-const { query, matchedData, validationResult } = require('express-validator');
-const { body } = new ExpressValidator({}, {
-	wrap: value => {
-	  return "'"+value+"'";
-	},
-});
-
+const { body, query, matchedData, validationResult } = require('express-validator');
 var router = express.Router();
 var path = require('path');
 
@@ -19,8 +12,6 @@ const fileFields = ["fileuid", "accountuid", "isdir", "islink", "isdeleted", "fi
 	"userattr", "attrhash", "changetime", "modifytime", "accesstime", "createtime"];
 
 
-//TODO Use 502 or 504 status if IBM comes back weird
-//Also 507 if user storage space is used up
 
 
 //Get the file properties
@@ -64,58 +55,58 @@ router.get('/:id', async function(req, res, next) {
 //GET /files/{fileId}/userattr returns userattr with etag
 //GET /files/{fileId}/metadata returns all properties
 
-const fileProps = ["fileuid", "accountuid", "isdir", "islink", "checksum", "filesize", 
-	"userattr", "attrhash", "changetime", "modifytime", "accesstime", "createtime"]
-
-const fileUIDCheck = () => body('fileuid').isUUID().withMessage("Must be a UUID!").wrap();
-const accountUIDCheck = () => body('accountuid').isUUID().withMessage("Must be a UUID!").wrap();
-const isDirCheck = () => body('isdir').isBoolean().optional();
-const isLinkCheck = () => body('islink').isBoolean().optional();
-const checksumCheck = () => body('checksum').isHash('sha256').optional().wrap();
-const fileSizeCheck = () => body('filesize').isInt().optional();
-const userAttrCheck = () => body('userattr').isJSON().optional().wrap();
-const attrHashCheck = () => body('attrhash').isHash('sha256').optional().wrap();
-const changetimeCheck = () => body('changetime').isInt().optional();
-const modifytimeCheck = () => body('modifytime').isInt().optional();
-const accesstimeCheck = () => body('accesstime').isInt().optional();
-const createtimeCheck = () => body('createtime').isInt().optional();
-
-const deviceUIDCheck = () => body('deviceuid').isUUID().withMessage("Must be a UUID!").wrap();
 
 
-
-const createValidations = [fileUIDCheck(), accountUIDCheck(), deviceUIDCheck(),
-	isDirCheck(),  isLinkCheck(), checksumCheck(), fileSizeCheck(), userAttrCheck(), attrHashCheck(), 
-	changetimeCheck(), modifytimeCheck(), accesstimeCheck(), createtimeCheck()];
-
-router.put('/create', createValidations, async function(req, res, next) {
+router.put('/create', async function(req, res, next) {
 	console.log(`\nCREATE FILE called`);
+	const body = req.body;
 
-	if(!validationResult(req).isEmpty()) 
-		return res.status(422).send({ errors: validationResult(req).array() });
+	console.log(body);
 
-	const data = matchedData(req);
+	const required = ["fileuid", "accountuid", "deviceid"];
+	for(const item of required) {
+		if(body[item] == undefined) {
+			var errJson = `{"status" : "fail", "data" : {"${item}" : "File create request must contain ${item}!"}}`
+			console.log(errJson);
+			return res.status(422).send(errJson);
+		}
+	}
 
-	//deviceUID is needed for use in Journal, but is not actually a field in the file database
-	const deviceUID = data.deviceuid;
-	delete data.deviceuid; 
 
-	const keys = Object.keys(data);
-	const vals = Object.values(data);
+	//Files can be created on a local device, and then copied to the server later.
+	//We need to allow all columns to be sent to allow for that. 
+	const fileProps = ["fileuid", "accountuid", "isdir", "islink", "checksum", "filesize", 
+		"userattr", "attrhash", "changetime", "modifytime", "accesstime", "createtime"]
+
+	//Grab any valid properties passed in the response body
+	var props = [];
+	var vals = [];
+
+	for(const key of fileProps) {
+		var val = body[key];
+		if(val == undefined)
+			continue;
+
+		props.push(key);
+		vals.push(`'${val}'`);
+	}
 
 
-	var sql = `INSERT INTO file (${keys.join(", ")}) VALUES (${vals.join(", ")}) `;
+
+	var sql = `INSERT INTO file (${props.join(", ")}) VALUES (${vals.join(", ")}) `;
 
 	//Replace the file if it was deleted. We 'delete' a file by setting isdeleted=true and hiding it.
-	keys.push("isdeleted");
+	props.push("isdeleted");
 	vals.push("false");
 
-	sql += `ON CONFLICT (fileuid) DO UPDATE SET (${keys.join(", ")}) = (${vals.join(", ")}) `;
+	sql += `ON CONFLICT (fileuid) DO UPDATE SET (${props.join(", ")}) = (${vals.join(", ")}) `;
 	sql += `WHERE file.isdeleted IS true `;
 	sql += `RETURNING ${fileProps.join(", ")};`;
 
+	//Replace all double quotes with single, postgres doesn't like that.
+	//Note: We don't have any columns that use quotes internally atm, but this would cause problems for ones that do.
+	sql = sql.replace(/""/g, "''");
 
-	//TODO Update journal
 
 
 	(async () => {
@@ -126,21 +117,21 @@ router.put('/create', createValidations, async function(req, res, next) {
 			
 			var ret = await client.query(sql);
 
-			//If we don't get anything back, that means the insert failed and the file already exists
+			//If we don't get anything back, that means the insert failed (99% chance prevHashes don't match)
 			if(ret.rows.length == 0)
-				res.status(409).send("File already exists!");
+				res.status(412).send("Hashes do not match");
 
-			res.status(201).send(ret.rows[0]);
+			res.send(ret.rows[0]);
 		} 
 		catch (err) {
 			console.log(`File creation failed!`);
+
 			console.log(err);
-			res.status(500).send(err);
+			res.status(409).send(err);
 		}
 		finally { client.release(); }
 	})();
 });
-
 
 
 router.put('/update/content', async function(req, res, next) {

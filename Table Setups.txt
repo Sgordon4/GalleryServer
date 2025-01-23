@@ -55,8 +55,8 @@ CREATE TABLE IF NOT EXISTS public.journal
 	journalid BIGSERIAL NOT NULL primary key,
 	fileuid uuid NOT NULL, --references file (fileuid),
 	accountuid uuid NOT NULL, --references account (accountuid),
-	filehash varchar,
-	attrhash varchar,
+	deviceuid uuid NOT NULL, 
+	properties json NOT NULL default '{}',
 	changetime bigint NOT NULL default extract(epoch from date_trunc('second', (now() at time zone 'utc')))
 );
 
@@ -76,8 +76,7 @@ CREATE TABLE IF NOT EXISTS public.content
 (
 	name varchar NOT NULL primary key,
 	size integer NOT NULL default 0,
-	createtime bigint NOT NULL default extract(epoch from date_trunc('second', (now() at time zone 'utc'))), 
-	usecount integer NOT NULL default 0
+	createtime bigint NOT NULL default extract(epoch from date_trunc('second', (now() at time zone 'utc')))
 );
 
 
@@ -143,24 +142,24 @@ DROP TRIGGER IF EXISTS file_update_to_journal ON file;
 DROP FUNCTION IF EXISTS insert_to_journal;
 
 
-CREATE OR REPLACE FUNCTION insert_to_journal() RETURNS TRIGGER AS $$
-BEGIN
-	INSERT INTO journal (fileuid, accountuid, filehash, attrhash, changetime)
-	VALUES (NEW.fileuid, NEW.accountuid, NEW.filehash, NEW.attrhash, NEW.changetime);
-	RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+--CREATE OR REPLACE FUNCTION insert_to_journal() RETURNS TRIGGER AS $$
+--BEGIN
+--	INSERT INTO journal (fileuid, accountuid, filehash, attrhash, changetime)
+--	VALUES (NEW.fileuid, NEW.accountuid, NEW.filehash, NEW.attrhash, NEW.changetime);
+--	RETURN NEW;
+--END;
+--$$ LANGUAGE plpgsql;
 
 
 
-CREATE OR REPLACE TRIGGER file_insert_to_journal AFTER INSERT ON file 
-FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
+--CREATE OR REPLACE TRIGGER file_insert_to_journal AFTER INSERT ON file 
+--FOR EACH ROW EXECUTE PROCEDURE insert_to_journal();
 
-CREATE OR REPLACE TRIGGER file_update_to_journal AFTER UPDATE OF attrhash, filehash, isdeleted ON file 
-FOR EACH ROW 
-WHEN ((NEW.attrhash IS DISTINCT FROM OLD.attrhash) OR 
-	(NEW.filehash IS DISTINCT FROM OLD.filehash) OR 
-	(NEW.isdeleted IS false AND OLD.isdeleted IS true))
-EXECUTE PROCEDURE insert_to_journal();
+--CREATE OR REPLACE TRIGGER file_update_to_journal AFTER UPDATE OF attrhash, filehash, isdeleted ON file 
+--FOR EACH ROW 
+--WHEN ((NEW.attrhash IS DISTINCT FROM OLD.attrhash) OR 
+--	(NEW.filehash IS DISTINCT FROM OLD.filehash) OR 
+--	(NEW.isdeleted IS false AND OLD.isdeleted IS true))
+--EXECUTE PROCEDURE insert_to_journal();
 
 

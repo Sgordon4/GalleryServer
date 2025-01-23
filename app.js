@@ -1,6 +1,7 @@
 /*
 https://www.youtube.com/watch?v=pKd0Rpw7O48
 https://www.w3.org/Provider/Style/URI.html
+https://express-validator.github.io/docs/
 */
 
 var createError = require('http-errors');
