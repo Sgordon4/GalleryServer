@@ -116,6 +116,7 @@ router.put('/create', createValidations, async function(req, res, next) {
 
 
 	//TODO Update journal
+	//TODO Return etag
 
 
 	(async () => {
