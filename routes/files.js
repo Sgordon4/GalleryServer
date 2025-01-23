@@ -1,6 +1,6 @@
 var express = require('express');
 const { ExpressValidator } = require('express-validator');
-const { query, matchedData, validationResult } = require('express-validator');
+const { check, matchedData, validationResult } = require('express-validator');
 const { body } = new ExpressValidator({}, {
 	wrap: value => {
 	  return "'"+value+"'";
@@ -64,35 +64,39 @@ router.get('/:id', async function(req, res, next) {
 //GET /files/{fileId}/userattr returns userattr with etag
 //GET /files/{fileId}/metadata returns all properties
 
-const fileProps = ["fileuid", "accountuid", "isdir", "islink", "checksum", "filesize", 
+const fileTableColumns = ["fileuid", "accountuid", "isdir", "islink", "checksum", "filesize", 
 	"userattr", "attrhash", "changetime", "modifytime", "accesstime", "createtime"]
 
 const fileUIDCheck = () => body('fileuid').isUUID().withMessage("Must be a UUID!").wrap();
 const accountUIDCheck = () => body('accountuid').isUUID().withMessage("Must be a UUID!").wrap();
-const isDirCheck = () => body('isdir').isBoolean().optional();
-const isLinkCheck = () => body('islink').isBoolean().optional();
-const checksumCheck = () => body('checksum').isHash('sha256').optional().wrap();
-const fileSizeCheck = () => body('filesize').isInt().optional();
-const userAttrCheck = () => body('userattr').isJSON().optional().wrap();
-const attrHashCheck = () => body('attrhash').isHash('sha256').optional().wrap();
-const changetimeCheck = () => body('changetime').isInt().optional();
-const modifytimeCheck = () => body('modifytime').isInt().optional();
-const accesstimeCheck = () => body('accesstime').isInt().optional();
-const createtimeCheck = () => body('createtime').isInt().optional();
+const isDirCheck = () => body('isdir').isBoolean().withMessage("Must be a boolean!");
+const isLinkCheck = () => body('islink').isBoolean().withMessage("Must be a boolean!");
+const checksumCheck = () => body('checksum').isHash('sha256').withMessage("Must be an SHA256 hash!").wrap();
+const fileSizeCheck = () => body('filesize').isInt().withMessage("Must be a number!");;
+const userAttrCheck = () => body('userattr').isJSON().withMessage("Must be a JSON object!").wrap();
+const attrHashCheck = () => body('attrhash').isHash('sha256').withMessage("Must be an SHA256 hash!").wrap();
+const changetimeCheck = () => body('changetime').isInt().withMessage("Must be an epoch value!");
+const modifytimeCheck = () => body('modifytime').isInt().withMessage("Must be an epoch value!");
+const accesstimeCheck = () => body('accesstime').isInt().withMessage("Must be an epoch value!");
+const createtimeCheck = () => body('createtime').isInt().withMessage("Must be an epoch value!");
 
-const deviceUIDCheck = () => body('deviceuid').isUUID().withMessage("Must be a UUID!").wrap();
+const deviceUIDCheck = () => body('deviceuid').isUUID().withMessage("Must be a UUID!");
+const ifMatchCheck = () => check("If-Match").isHash('sha256').withMessage("Must be an SHA256 hash!");
 
 
 
 const createValidations = [fileUIDCheck(), accountUIDCheck(), deviceUIDCheck(),
-	isDirCheck(),  isLinkCheck(), checksumCheck(), fileSizeCheck(), userAttrCheck(), attrHashCheck(), 
-	changetimeCheck(), modifytimeCheck(), accesstimeCheck(), createtimeCheck()];
+	isDirCheck().optional(),  isLinkCheck().optional(), checksumCheck().optional(), 
+	fileSizeCheck().optional(), userAttrCheck().optional(), attrHashCheck().optional(), 
+	changetimeCheck().optional(), modifytimeCheck().optional(), accesstimeCheck().optional(), 
+	createtimeCheck().optional()];
 
 router.put('/create', createValidations, async function(req, res, next) {
 	console.log(`\nCREATE FILE called`);
-
-	if(!validationResult(req).isEmpty()) 
+	if(!validationResult(req).isEmpty()) {
+		console.log("Body data has issues, cannot create file!");
 		return res.status(422).send({ errors: validationResult(req).array() });
+	}
 
 	const data = matchedData(req);
 
@@ -112,11 +116,7 @@ router.put('/create', createValidations, async function(req, res, next) {
 
 	sql += `ON CONFLICT (fileuid) DO UPDATE SET (${keys.join(", ")}) = (${vals.join(", ")}) `;
 	sql += `WHERE file.isdeleted IS true `;
-	sql += `RETURNING ${fileProps.join(", ")};`;
-
-
-	//TODO Update journal
-	//TODO Return etag
+	sql += `RETURNING ${fileTableColumns.join(", ")};`;
 
 
 	(async () => {
@@ -129,14 +129,27 @@ router.put('/create', createValidations, async function(req, res, next) {
 
 			//If we don't get anything back, that means the insert failed and the file already exists
 			if(ret.rows.length == 0)
-				res.status(409).send("File already exists!");
+				return res.status(409).send("File already exists!");
 
-			res.status(201).send(ret.rows[0]);
+			const fileProps = ret.rows[0];
+
+
+			//Add an entry to the Journal with the new file information
+			const changes = {
+				checksum: fileProps.checksum,
+				attrhash: fileProps.attrhash,
+				changetime: fileProps.changetime,
+				createtime: fileProps.createtime
+			}
+			putJournal(client, fileProps.fileuid, fileProps.accountuid, deviceUID, JSON.stringify(changes), fileProps.changetime)
+
+
+			return res.status(201).send(fileProps);
 		} 
 		catch (err) {
 			console.log(`File creation failed!`);
 			console.log(err);
-			res.status(500).send(err);
+			return res.status(500).send(err);
 		}
 		finally { client.release(); }
 	})();
@@ -144,17 +157,89 @@ router.put('/create', createValidations, async function(req, res, next) {
 
 
 
-router.put('/update/content', async function(req, res, next) {
-	console.log(`\nUPDATE FILE CONTENT called`);
-	const body = req.body;
-});
 
-router.put('/update/attrs', async function(req, res, next) {
+
+//https://developer.mozilla.org/en-US/docs/Web/HTTP/Conditional_requests#avoiding_the_lost_update_problem_with_optimistic_locking
+
+//TODO Is there a way to return different things from the db depending on how the where fails, e.g. hash fail vs does not exist? 
+
+const contentValidations = [fileUIDCheck(), accountUIDCheck(), deviceUIDCheck(), ifMatchCheck(),
+	checksumCheck(), fileSizeCheck(), changetimeCheck().optional(), modifytimeCheck().optional()]
+
+router.put('/content', contentValidations, async function(req, res, next) {
+	console.log(`\nUPDATE FILE CONTENT called`);
+	if(!validationResult(req).isEmpty()) {
+		console.log("Body data has issues, cannot update content!");
+		return res.status(422).send({ errors: validationResult(req).array() });
+	}
+
+	const data = matchedData(req);
+
+	//If-Match is used to avoid lost updates
+	const ifMatch = data["if-match"];
+	delete data["if-match"]; 
+	console.log("If-Match: "+ifMatch);
+
+	//deviceUID is needed for use in Journal, but is not actually a field in the file database
+	const deviceUID = data.deviceuid;
+	delete data.deviceuid; 
+
+
+	//If changetime or modifytime weren't included, set them to the current epoch timestamp
+	data.changetime = data.changetime || "extract(epoch from date_trunc('second', (now() at time zone 'utc')))";
+	data.modifytime = data.modifytime || "extract(epoch from date_trunc('second', (now() at time zone 'utc')))";
+
+
+	const keys = Object.keys(data);
+	const vals = Object.values(data);
+
+	var sql = `UPDATE file SET (${keys.join(", ")}) = (${vals.join(", ")}) `;
+	sql += `WHERE file.fileuid = ${data.fileuid} AND file.checksum = '${ifMatch}'AND file.isdeleted IS false `;
+	sql += `RETURNING ${fileTableColumns.join(", ")};`;
+
+	(async () => {
+		const client = await POOL.connect();
+		try {
+			console.log("Updating file contents with sql -");
+			console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
+			
+			var ret = await client.query(sql);
+
+			//If we don't get anything back, that means the update failed and the file does not exist
+			if(ret.rows.length == 0)
+				return res.status(404).send("File does not exist!");
+
+			const fileProps = ret.rows[0];
+
+
+			//Add an entry to the Journal with the new file information
+			const changes = {
+				checksum: fileProps.checksum,
+				attrhash: fileProps.attrhash,
+				changetime: fileProps.changetime,
+				modifytime: fileProps.modifytime
+			}
+			putJournal(client, fileProps.fileuid, fileProps.accountuid, deviceUID, JSON.stringify(changes), fileProps.changetime)
+
+
+			return res.status(200).send(fileProps);
+		} 
+		catch (err) {
+			console.log(`File content update failed!`);
+			console.log(err);
+			return res.status(500).send(err);
+		}
+		finally { client.release(); }
+	})();
+});
+	
+
+router.put('/attrs', async function(req, res, next) {
 	console.log(`\nUPDATE FILE ATTRS called`);
 	const body = req.body;
 });
 
-router.put('/update/timestamps', async function(req, res, next) {
+router.put('/timestamps', async function(req, res, next) {
 	console.log(`\nUPDATE FILE TIMESTAMPS called`);
 	const body = req.body;
 });
@@ -174,7 +259,20 @@ router.put('/delete', async function(req, res, next) {
 
 
 
+async function putJournal(client, fileUID, accountUID, deviceUID, changes, changetime) {
+	var sql = `INSERT INTO journal (fileUID, accountUID, deviceUID, changes, changetime) `;
+	sql += `VALUES ('${fileUID}', '${accountUID}', '${deviceUID}', '${changes}', ${changetime}) `;
+	sql += `RETURNING *;`;
 
+	console.log("Creating journal with sql -");
+	console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
+	
+	var ret = await client.query(sql);
+
+	//If we don't get anything back, that means the insert failed
+	if(ret.rows.length == 0)
+		throw new Error("Journal insert failed!");
+}
 
 
 

@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS public.journal
 	fileuid uuid NOT NULL, --references file (fileuid),
 	accountuid uuid NOT NULL, --references account (accountuid),
 	deviceuid uuid NOT NULL, 
-	properties json NOT NULL default '{}',
+	changes json NOT NULL default '{}',
 	changetime bigint NOT NULL default extract(epoch from date_trunc('second', (now() at time zone 'utc')))
 );
 
