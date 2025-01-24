@@ -46,7 +46,6 @@ router.get('/:name', async function(req, res, next) {
 			res.status(400).send(`${err.code} - ${err.message}`);
 		})
 		.finally(() => {
-			console.log("Inside finally");
 			client.release();
 		});
 	})();

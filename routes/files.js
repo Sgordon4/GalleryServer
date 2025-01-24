@@ -97,6 +97,10 @@ const createValidations = [fileUIDCheck(), accountUIDCheck(), deviceUIDCheck(),
 
 router.put('/create', createValidations, async function(req, res, next) {
 	console.log(`\nCREATE FILE called`);
+
+
+	console.log(validationResult(req));
+
 	if(!validationResult(req).isEmpty()) {
 		console.log("Body data has issues, cannot create file!");
 		return res.status(422).send({ errors: validationResult(req).array() });
@@ -112,13 +116,15 @@ router.put('/create', createValidations, async function(req, res, next) {
 	const vals = Object.values(data);
 
 
+
 	var sql = `INSERT INTO file (${keys.join(", ")}) VALUES (${vals.join(", ")}) `;
 
 	//Replace the file if it was deleted. We 'delete' a file by setting isdeleted=true and hiding it.
 	keys.push("isdeleted");
 	vals.push("false");
 
-	sql += `ON CONFLICT (fileuid) DO UPDATE SET (${keys.join(", ")}) = (${vals.join(", ")}) `;
+	const joined = Object.entries(data).map(item => item.join(" = ")).join(", ");
+	sql += `ON CONFLICT (fileuid) DO UPDATE SET ${joined} `;
 	sql += `WHERE file.isdeleted IS true `;
 	sql += `RETURNING ${fileTableColumns.join(", ")};`;
 
@@ -250,7 +256,7 @@ router.put('/content', contentValidations, async function(req, res, next) {
 
 const attributeValidations = [fileUIDCheck(), accountUIDCheck(), deviceUIDCheck(), ifMatchCheck(), userAttrCheck(), changetimeCheck().optional()]
 
-router.put('/attrs', attributeValidations, async function(req, res, next) {
+router.put('/attributes', attributeValidations, async function(req, res, next) {
 	console.log(`\nUPDATE FILE ATTRS called`);
 	if(!validationResult(req).isEmpty()) {
 		console.log("Body data has issues, cannot update attributes!");
