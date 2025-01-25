@@ -115,8 +115,9 @@ const deviceUIDCheck = () => body('deviceuid').isUUID().withMessage("Must be a U
 
 const journalValidations = [journalIDCheck(), accountUIDCheck(), fileUIDsCheck(), deviceUIDCheck()]
 
-//Get the journal entries after journalID for the provided fields
-router.get('/:journalid', journalValidations, function(req, res, next) {
+//Get the journal entries after journalID for the provided fields. 
+//This is actually a Get, but I'm using post because I want body fields
+router.post('/:journalid', journalValidations, function(req, res, next) {
 	if(!validationResult(req).isEmpty()) {
 		console.log("Body data has issues, cannot get journals!");
 		return res.status(422).send({ errors: validationResult(req).array() });
@@ -149,8 +150,9 @@ router.get('/:journalid', journalValidations, function(req, res, next) {
 
 
 
-//Get the latest journal entry for each file after journalID given the provided fields
-router.get('/latest/:journalid', journalValidations, function(req, res, next) {
+//Get the latest journal entry for each file after journalID given the provided fields. 
+//This is actually a Get, but I'm using post because I want body fields
+router.post('/latest/:journalid', journalValidations, function(req, res, next) {
 	if(!validationResult(req).isEmpty()) {
 		console.log("Body data has issues, cannot get journals!");
 		return res.status(422).send({ errors: validationResult(req).array() });

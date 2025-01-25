@@ -1,11 +1,7 @@
 var express = require('express');
 const { ExpressValidator } = require('express-validator');
 const { header, matchedData, validationResult } = require('express-validator');
-const { body, param } = new ExpressValidator({}, {
-	wrap: value => {
-	  return "'"+value+"'";
-	},
-});
+const { body, param } = new ExpressValidator({}, { wrap: value => { return "'"+value+"'"; } });
 
 var router = express.Router();
 var path = require('path');
@@ -97,10 +93,6 @@ const createValidations = [fileUIDCheck(), accountUIDCheck(), deviceUIDCheck(),
 
 router.put('/create', createValidations, async function(req, res, next) {
 	console.log(`\nCREATE FILE called`);
-
-
-	console.log(validationResult(req));
-
 	if(!validationResult(req).isEmpty()) {
 		console.log("Body data has issues, cannot create file!");
 		return res.status(422).send({ errors: validationResult(req).array() });
