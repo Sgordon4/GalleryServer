@@ -19,6 +19,13 @@ const fileFields = ["fileuid", "accountuid", "isdir", "islink", "isdeleted", "fi
 	"userattr", "attrhash", "changetime", "modifytime", "accesstime", "createtime"];
 
 
+//Could use these, but the normal get-all-props and separate content call is working well.
+//Helps us get exactly the content we want even if file was just updated too
+//GET /files/{fileId} returns content with etag
+//GET /files/{fileId}/link returns uri of content with etag
+//GET /files/{fileId}/userattr returns userattr with etag
+//GET /files/{fileId}/metadata returns all properties
+
 //TODO Use 502 or 504 status if IBM comes back weird
 //Also 507 if user storage space is used up
 
@@ -57,12 +64,6 @@ router.get('/:id', async function(req, res, next) {
 
 
 //-----------------------------------------------------------------------------
-
-
-//GET /files/{fileId} returns content with etag
-//GET /files/{fileId}/link returns uri of content with etag
-//GET /files/{fileId}/userattr returns userattr with etag
-//GET /files/{fileId}/metadata returns all properties
 
 const fileTableColumns = ["fileuid", "accountuid", "isdir", "islink", "checksum", "filesize", 
 	"userattr", "attrhash", "changetime", "modifytime", "accesstime", "createtime"]
