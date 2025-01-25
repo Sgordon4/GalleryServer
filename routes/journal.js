@@ -1,4 +1,11 @@
 var express = require('express');
+const { ExpressValidator } = require('express-validator');
+const { matchedData, validationResult } = require('express-validator');
+const { body, param } = new ExpressValidator({}, {
+	wrap: value => {
+	  return "'"+value+"'";
+	},
+});
 var router = express.Router();
 var path = require('path');
 
@@ -8,7 +15,7 @@ const { time } = require('console');
 
 
 
-const journalFields = ["journalid", "fileuid", "accountuid", "filehash", "attrhash", "changetime"]
+const journalFields = ["journalid", "fileuid", "accountuid", "changes", "changetime"]
 
 
 
@@ -100,44 +107,28 @@ function sleep(ms) {
 
 
 
-
-//Get the journal entries in a journalID range
-router.get('/:startid', function(req, res, next) {
-	const startID = req.params.startid;
-	console.log(`\nGET JOURNAL called with start='${startID}'`);
-
-
-	var sql =
-	`SELECT journalid, fileuid, accountuid, filehash, attrhash, changetime 
-	FROM journal WHERE journalid > '${startID}';`;
-
-	(async () => {
-		const client = await POOL.connect();
-		try {
-			console.log(`Fetching journal entries with sql -`);
-			console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
-			
-			const {rows} = await client.query(sql);
-			res.send(rows);
-		} 
-		catch (err) {
-			console.error(err);
-			res.send(err);
-		}
-		finally { client.release(); }
-	})();
-});
+const journalIDCheck = () => param('journalid').isInt({min: 0}).withMessage("Must be a number, >= 0!");
+const accountUIDCheck = () => body('accountuid').isUUID().withMessage("Must be a UUID!");
+const fileUIDsCheck = () => body('fileuid').toArray().isUUID().withMessage("Must be a UUID!");
+const deviceUIDCheck = () => body('deviceuid').isUUID().withMessage("Must be a UUID!");
 
 
-//Get the journal entries for a specific fileuid
-router.get('/file/:id', function(req, res, next) {
-	const fileUID = req.params.id;
-	console.log(`\nGET JOURNAL BY FILEUID called with fileUID='${fileUID}'`);
+const journalValidations = [journalIDCheck(), accountUIDCheck(), fileUIDsCheck(), deviceUIDCheck()]
+
+//Get the journal entries after journalID for the provided fields. 
+//This is actually a Get, but I'm using post because I want body fields
+router.post('/:journalid', journalValidations, function(req, res, next) {
+	if(!validationResult(req).isEmpty()) {
+		console.log("Body data has issues, cannot get journals!");
+		return res.status(422).send({ errors: validationResult(req).array() });
+	}
+	const data = matchedData(req);
+	console.log(`\nGET ALL JOURNAL FOR called with start='${data.journalid}', accountuid='${data.accountuid}'`);
 
 
-	var sql =
-	`SELECT journalid, fileuid, accountuid, filehash, attrhash, changetime 
-	FROM journal WHERE fileuid = '${fileUID}';`;
+	var fileWhere = (data.fileuid.length == 0) ? "" : `AND fileuid in (${data.fileuid.map(item => "'"+item+"'")}) `;
+	var sql = `SELECT journalid, fileuid, accountuid, changes, changetime FROM journal `;
+	sql += `WHERE journalid > '${data.journalid}' AND accountuid = '${data.accountuid}' ${fileWhere}AND deviceuid != '${data.deviceuid}';`;
 
 	(async () => {
 		const client = await POOL.connect();
@@ -146,15 +137,54 @@ router.get('/file/:id', function(req, res, next) {
 			console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
 			
 			const {rows} = await client.query(sql);
-			res.send(rows);
+			return res.status(200).send(rows);
 		} 
 		catch (err) {
-			console.error(err);
-			res.send(err);
+			console.log(`Journal get failed!`);
+			console.log(err);
+			return res.status(500).send(err);
 		}
 		finally { client.release(); }
 	})();
 });
+
+
+
+//Get the latest journal entry for each file after journalID given the provided fields. 
+//This is actually a Get, but I'm using post because I want body fields
+router.post('/latest/:journalid', journalValidations, function(req, res, next) {
+	if(!validationResult(req).isEmpty()) {
+		console.log("Body data has issues, cannot get journals!");
+		return res.status(422).send({ errors: validationResult(req).array() });
+	}
+	const data = matchedData(req);
+	console.log(`\nGET ALL JOURNAL FOR called with start='${data.journalid}', accountuid='${data.accountuid}'`);
+
+
+	var fileWhere = (data.fileuid.length == 0) ? "" : `AND fileuid in (${data.fileuid.map(item => "'"+item+"'")}) `;
+	var sql = `SELECT DISTINCT ON (fileuid) journalid, fileuid, accountuid, changes, changetime FROM journal `;
+	sql += `WHERE journalid > '${data.journalid}' AND accountuid = '${data.accountuid}' ${fileWhere}AND deviceuid != '${data.deviceuid}' `;
+	sql += `ORDER BY fileuid, journalid DESC;`;
+
+	(async () => {
+		const client = await POOL.connect();
+		try {
+			console.log(`Fetching journal entries with sql -`);
+			console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
+			
+			const {rows} = await client.query(sql);
+			return res.status(200).send(rows);
+		} 
+		catch (err) {
+			console.log(`Journal get failed!`);
+			console.log(err);
+			return res.status(500).send(err);
+		}
+		finally { client.release(); }
+	})();
+});
+
+
 
 
 module.exports = router;

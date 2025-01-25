@@ -1,11 +1,7 @@
 var express = require('express');
 const { ExpressValidator } = require('express-validator');
 const { header, matchedData, validationResult } = require('express-validator');
-const { body, param } = new ExpressValidator({}, {
-	wrap: value => {
-	  return "'"+value+"'";
-	},
-});
+const { body, param } = new ExpressValidator({}, { wrap: value => { return "'"+value+"'"; } });
 
 var router = express.Router();
 var path = require('path');
@@ -75,7 +71,7 @@ const accountUIDCheck = () => body('accountuid').isUUID().withMessage("Must be a
 const isDirCheck = () => body('isdir').isBoolean().withMessage("Must be a boolean!");
 const isLinkCheck = () => body('islink').isBoolean().withMessage("Must be a boolean!");
 const checksumCheck = () => body('checksum').isHash('sha256').withMessage("Must be an SHA256 hash!").wrap();
-const fileSizeCheck = () => body('filesize').isInt().withMessage("Must be a number!");;
+const fileSizeCheck = () => body('filesize').isInt().withMessage("Must be a number!");
 const userAttrCheck = () => body('userattr').isJSON().withMessage("Must be a JSON object!").wrap();
 const attrHashCheck = () => body('attrhash').isHash('sha256').withMessage("Must be an SHA256 hash!").wrap();
 const changetimeCheck = () => body('changetime').isInt().withMessage("Must be an epoch value!");
@@ -98,10 +94,6 @@ const createValidations = [fileUIDCheck(), accountUIDCheck(), deviceUIDCheck(),
 
 router.put('/create', createValidations, async function(req, res, next) {
 	console.log(`\nCREATE FILE called`);
-
-
-	console.log(validationResult(req));
-
 	if(!validationResult(req).isEmpty()) {
 		console.log("Body data has issues, cannot create file!");
 		return res.status(422).send({ errors: validationResult(req).array() });
