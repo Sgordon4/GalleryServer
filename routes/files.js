@@ -74,7 +74,7 @@ const accountUIDCheck = () => body('accountuid').isUUID().withMessage("Must be a
 const isDirCheck = () => body('isdir').isBoolean().withMessage("Must be a boolean!");
 const isLinkCheck = () => body('islink').isBoolean().withMessage("Must be a boolean!");
 const checksumCheck = () => body('checksum').isHash('sha256').withMessage("Must be an SHA256 hash!").wrap();
-const fileSizeCheck = () => body('filesize').isInt().withMessage("Must be a number!");;
+const fileSizeCheck = () => body('filesize').isInt().withMessage("Must be a number!");
 const userAttrCheck = () => body('userattr').isJSON().withMessage("Must be a JSON object!").wrap();
 const attrHashCheck = () => body('attrhash').isHash('sha256').withMessage("Must be an SHA256 hash!").wrap();
 const changetimeCheck = () => body('changetime').isInt().withMessage("Must be an epoch value!");

@@ -1,4 +1,5 @@
 var express = require('express');
+const { body, param, matchedData, validationResult } = require('express-validator');
 var router = express.Router();
 var path = require('path');
 
@@ -8,7 +9,7 @@ const { time } = require('console');
 
 
 
-const journalFields = ["journalid", "fileuid", "accountuid", "filehash", "attrhash", "changetime"]
+const journalFields = ["journalid", "fileuid", "accountuid", "changes", "changetime"]
 
 
 
@@ -100,16 +101,31 @@ function sleep(ms) {
 
 
 
+const journalIDCheck = () => param('journalid').isInt({min: 0}).withMessage("Must be a number, >= 0!");
+const accountUIDCheck = () => body('accountuid').isUUID().withMessage("Must be a UUID!");
+const fileUIDsCheck = () => body('fileuid').toArray().isUUID().withMessage("Must be a UUID!");
+const deviceUIDCheck = () => body('deviceuid').isUUID().withMessage("Must be a UUID!");
 
-//Get the journal entries in a journalID range
-router.get('/:startid', function(req, res, next) {
-	const startID = req.params.startid;
-	console.log(`\nGET JOURNAL called with start='${startID}'`);
+
+const contentValidations = [journalIDCheck(), accountUIDCheck(), fileUIDsCheck(), deviceUIDCheck()]
+
+//Get the journal entries after journalID for the provided fields
+router.get('/:journalid', contentValidations, function(req, res, next) {
+	if(!validationResult(req).isEmpty()) {
+		console.log("Body data has issues, cannot get journals!");
+		return res.status(422).send({ errors: validationResult(req).array() });
+	}
+	const data = matchedData(req);
+	console.log(`\nGET ALL JOURNAL FOR called with start='${data.journalid}', accountuid='${data.accountuid}'`);
+
+	console.log(data);
+
+	//TODO Fix this, loop or map or whatever
+	var fileWhere = (data.fileuid.length == 0) ? "" : `AND fileuid in (${data.fileuid}) `;
 
 
-	var sql =
-	`SELECT journalid, fileuid, accountuid, filehash, attrhash, changetime 
-	FROM journal WHERE journalid > '${startID}';`;
+	var sql = `SELECT journalid, fileuid, accountuid, changes, changetime FROM journal `;
+	sql += `WHERE journalid > '${data.journalid}' AND accountuid = '${data.accountuid}' ${fileWhere}AND deviceuid != '${data.deviceuid}';`;
 
 	(async () => {
 		const client = await POOL.connect();
