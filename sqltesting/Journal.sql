@@ -2,6 +2,52 @@
 SELECT * FROM journal;
 
 
+
+SELECT * FROM journal WHERE fileuid IN ('2e057bcf-0d6d-4b11-a461-2aaa290c5a8b', 'c2801f9f-561b-4003-967e-e3c62b1c4bb4');
+
+SELECT DISTINCT ON (fileuid) journalid, fileuid, accountuid, changes, changetime 
+FROM journal WHERE journalid > 2 AND accountuid = 'b16fe0ba-df94-4bb6-ad03-aab7e47ca8c3' 
+AND fileuid IN ('2e057bcf-0d6d-4b11-a461-2aaa290c5a8b', 'c2801f9f-561b-4003-967e-e3c62b1c4bb4')
+AND deviceuid != '052dc91c-0290-469b-8caf-e1b6793eba91'
+ORDER BY fileuid, journalid DESC;
+
+
+SELECT DISTINCT ON (fileuid, (MAX(journalid) AS MaxID)) journalid, fileuid, accountuid, changes, changetime 
+FROM journal 
+WHERE fileuid IN ('2e057bcf-0d6d-4b11-a461-2aaa290c5a8b', 'c2801f9f-561b-4003-967e-e3c62b1c4bb4')
+ORDER BY fileuid, MaxID DESC;
+
+SELECT DISTINCT ON (fileuid) journalid, fileuid, changes
+FROM journal
+WHERE fileuid IN ('2e057bcf-0d6d-4b11-a461-2aaa290c5a8b', 'c2801f9f-561b-4003-967e-e3c62b1c4bb4')
+ORDER BY fileuid, journalid DESC;
+
+SELECT *
+FROM (
+    SELECT DISTINCT ON (fileuid) journalid, fileuid, changes
+	FROM journal
+	WHERE fileuid IN ('2e057bcf-0d6d-4b11-a461-2aaa290c5a8b', 'c2801f9f-561b-4003-967e-e3c62b1c4bb4')
+	ORDER BY fileuid, journalid DESC
+) subquery
+ORDER BY journalid;
+
+
+
+SELECT * FROM journal
+WHERE fileuid in ('8166de31-4ef5-4480-b6c8-b775c95e2601','39327b5a-b5eb-4288-b980-06260cb9772e');
+
+SELECT * FROM ( 
+	SELECT DISTINCT ON (fileuid) journalid, fileuid, accountuid, changes, changetime 
+	FROM journal WHERE journalid > 2 AND accountuid = 'b16fe0ba-df94-4bb6-ad03-aab7e47ca8c3' 
+	AND fileuid in ('8166de31-4ef5-4480-b6c8-b775c95e2601','39327b5a-b5eb-4288-b980-06260cb9772e') 
+	AND deviceuid != 'ffeebb67-8dcd-4676-b0d5-7594b22ff580'
+	ORDER BY fileuid, journalid DESC 
+) subquery ORDER BY journalid;
+
+
+
+
+
 INSERT INTO journal (fileuid, accountuid, filehash, attrhash, changetime)
 VALUES (gen_random_uuid(), gen_random_uuid(), 'filehash', 'attrhash', extract(epoch from date_trunc('second', (now() at time zone 'utc'))));
 

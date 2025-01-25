@@ -127,8 +127,8 @@ router.post('/:journalid', journalValidations, function(req, res, next) {
 
 
 	var fileWhere = (data.fileuid.length == 0) ? "" : `AND fileuid in (${data.fileuid.map(item => "'"+item+"'")}) `;
-	var sql = `SELECT journalid, fileuid, accountuid, changes, changetime FROM journal `;
-	sql += `WHERE journalid > '${data.journalid}' AND accountuid = '${data.accountuid}' ${fileWhere}AND deviceuid != '${data.deviceuid}';`;
+	var sql = `SELECT journalid, fileuid, accountuid, changes, changetime FROM journal `+
+		`WHERE journalid > ${data.journalid} AND accountuid = '${data.accountuid}' ${fileWhere}AND deviceuid != '${data.deviceuid}';`;
 
 	(async () => {
 		const client = await POOL.connect();
@@ -158,13 +158,16 @@ router.post('/latest/:journalid', journalValidations, function(req, res, next) {
 		return res.status(422).send({ errors: validationResult(req).array() });
 	}
 	const data = matchedData(req);
-	console.log(`\nGET ALL JOURNAL FOR called with start='${data.journalid}', accountuid='${data.accountuid}'`);
+	console.log(`\nGET ALL JOURNAL FOR called with start=${data.journalid}, accountuid='${data.accountuid}'`);
 
 
 	var fileWhere = (data.fileuid.length == 0) ? "" : `AND fileuid in (${data.fileuid.map(item => "'"+item+"'")}) `;
-	var sql = `SELECT DISTINCT ON (fileuid) journalid, fileuid, accountuid, changes, changetime FROM journal `;
-	sql += `WHERE journalid > '${data.journalid}' AND accountuid = '${data.accountuid}' ${fileWhere}AND deviceuid != '${data.deviceuid}' `;
-	sql += `ORDER BY fileuid, journalid DESC;`;
+	var sql = `SELECT * FROM ( `+
+		`SELECT DISTINCT ON (fileuid) journalid, fileuid, accountuid, changes, changetime FROM journal `+
+		`WHERE journalid > ${data.journalid} AND accountuid = '${data.accountuid}' ${fileWhere}AND deviceuid != '${data.deviceuid}' `+
+		`ORDER BY fileuid, journalid DESC `+
+	`) subquery ORDER BY journalid;`;
+
 
 	(async () => {
 		const client = await POOL.connect();
