@@ -1,5 +1,11 @@
 var express = require('express');
-const { body, param, matchedData, validationResult } = require('express-validator');
+const { ExpressValidator } = require('express-validator');
+const { matchedData, validationResult } = require('express-validator');
+const { body, param } = new ExpressValidator({}, {
+	wrap: value => {
+	  return "'"+value+"'";
+	},
+});
 var router = express.Router();
 var path = require('path');
 
@@ -107,10 +113,10 @@ const fileUIDsCheck = () => body('fileuid').toArray().isUUID().withMessage("Must
 const deviceUIDCheck = () => body('deviceuid').isUUID().withMessage("Must be a UUID!");
 
 
-const contentValidations = [journalIDCheck(), accountUIDCheck(), fileUIDsCheck(), deviceUIDCheck()]
+const journalValidations = [journalIDCheck(), accountUIDCheck(), fileUIDsCheck(), deviceUIDCheck()]
 
 //Get the journal entries after journalID for the provided fields
-router.get('/:journalid', contentValidations, function(req, res, next) {
+router.get('/:journalid', journalValidations, function(req, res, next) {
 	if(!validationResult(req).isEmpty()) {
 		console.log("Body data has issues, cannot get journals!");
 		return res.status(422).send({ errors: validationResult(req).array() });
@@ -118,12 +124,8 @@ router.get('/:journalid', contentValidations, function(req, res, next) {
 	const data = matchedData(req);
 	console.log(`\nGET ALL JOURNAL FOR called with start='${data.journalid}', accountuid='${data.accountuid}'`);
 
-	console.log(data);
 
-	//TODO Fix this, loop or map or whatever
-	var fileWhere = (data.fileuid.length == 0) ? "" : `AND fileuid in (${data.fileuid}) `;
-
-
+	var fileWhere = (data.fileuid.length == 0) ? "" : `AND fileuid in (${data.fileuid.map(item => "'"+item+"'")}) `;
 	var sql = `SELECT journalid, fileuid, accountuid, changes, changetime FROM journal `;
 	sql += `WHERE journalid > '${data.journalid}' AND accountuid = '${data.accountuid}' ${fileWhere}AND deviceuid != '${data.deviceuid}';`;
 
@@ -134,26 +136,33 @@ router.get('/:journalid', contentValidations, function(req, res, next) {
 			console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
 			
 			const {rows} = await client.query(sql);
-			res.send(rows);
+			return res.status(200).send(rows);
 		} 
 		catch (err) {
-			console.error(err);
-			res.send(err);
+			console.log(`Journal get failed!`);
+			console.log(err);
+			return res.status(500).send(err);
 		}
 		finally { client.release(); }
 	})();
 });
 
 
-//Get the journal entries for a specific fileuid
-router.get('/file/:id', function(req, res, next) {
-	const fileUID = req.params.id;
-	console.log(`\nGET JOURNAL BY FILEUID called with fileUID='${fileUID}'`);
+
+//Get the latest journal entry for each file after journalID given the provided fields
+router.get('/latest/:journalid', journalValidations, function(req, res, next) {
+	if(!validationResult(req).isEmpty()) {
+		console.log("Body data has issues, cannot get journals!");
+		return res.status(422).send({ errors: validationResult(req).array() });
+	}
+	const data = matchedData(req);
+	console.log(`\nGET ALL JOURNAL FOR called with start='${data.journalid}', accountuid='${data.accountuid}'`);
 
 
-	var sql =
-	`SELECT journalid, fileuid, accountuid, filehash, attrhash, changetime 
-	FROM journal WHERE fileuid = '${fileUID}';`;
+	var fileWhere = (data.fileuid.length == 0) ? "" : `AND fileuid in (${data.fileuid.map(item => "'"+item+"'")}) `;
+	var sql = `SELECT DISTINCT ON (fileuid) journalid, fileuid, accountuid, changes, changetime FROM journal `;
+	sql += `WHERE journalid > '${data.journalid}' AND accountuid = '${data.accountuid}' ${fileWhere}AND deviceuid != '${data.deviceuid}' `;
+	sql += `ORDER BY fileuid, journalid DESC;`;
 
 	(async () => {
 		const client = await POOL.connect();
@@ -162,15 +171,18 @@ router.get('/file/:id', function(req, res, next) {
 			console.log(sql.replaceAll("\t","").replaceAll("\n", " "));
 			
 			const {rows} = await client.query(sql);
-			res.send(rows);
+			return res.status(200).send(rows);
 		} 
 		catch (err) {
-			console.error(err);
-			res.send(err);
+			console.log(`Journal get failed!`);
+			console.log(err);
+			return res.status(500).send(err);
 		}
 		finally { client.release(); }
 	})();
 });
+
+
 
 
 module.exports = router;
