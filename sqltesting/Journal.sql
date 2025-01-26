@@ -46,6 +46,22 @@ SELECT * FROM (
 
 
 
+SELECT journalid, fileuid, accountuid, changes, changetime 
+FROM journal 
+WHERE journalid > 2 
+AND deviceuid != 'ffeebb67-8dcd-4676-b0d5-7594b22ff580'
+LIMIT ;
+
+SELECT * FROM (
+SELECT journalid, fileuid, accountuid, changes, changetime 
+FROM journal 
+WHERE journalid > 2 
+AND deviceuid != 'ffeebb67-8dcd-4676-b0d5-7594b22ff580'
+ORDER BY journalid DESC
+LIMIT 3 ) subquery
+ORDER BY journalid ASC
+
+
 
 
 INSERT INTO journal (fileuid, accountuid, filehash, attrhash, changetime)

@@ -1,6 +1,6 @@
 var express = require('express');
 const { ExpressValidator } = require('express-validator');
-const { matchedData, validationResult } = require('express-validator');
+const { matchedData, validationResult, oneOf } = require('express-validator');
 const { body, param } = new ExpressValidator({}, {
 	wrap: value => {
 	  return "'"+value+"'";
@@ -109,11 +109,14 @@ function sleep(ms) {
 
 const journalIDCheck = () => param('journalid').isInt({min: 0}).withMessage("Must be a number, >= 0!");
 const accountUIDCheck = () => body('accountuid').isUUID().withMessage("Must be a UUID!");
-const fileUIDsCheck = () => body('fileuid').toArray().isUUID().withMessage("Must be a UUID!");
+const fileUIDsReqdCheck = () => body('fileuid').notEmpty().withMessage("Must have one or more UUIDs!")
+												.toArray().isUUID().withMessage("Must be a UUID!");
 const deviceUIDCheck = () => body('deviceuid').isUUID().withMessage("Must be a UUID!");
 
 
-const journalValidations = [journalIDCheck(), accountUIDCheck(), fileUIDsCheck(), deviceUIDCheck()]
+
+const journalValidations = [journalIDCheck(), deviceUIDCheck(),
+accountUIDCheck().optional(), fileUIDsReqdCheck().optional()];
 
 //Get the journal entries after journalID for the provided fields. 
 //This is actually a Get, but I'm using post because I want body fields
@@ -123,12 +126,21 @@ router.post('/:journalid', journalValidations, function(req, res, next) {
 		return res.status(422).send({ errors: validationResult(req).array() });
 	}
 	const data = matchedData(req);
-	console.log(`\nGET ALL JOURNAL FOR called with start='${data.journalid}', accountuid='${data.accountuid}'`);
+	if(data.fileuid == undefined && data.accountuid == undefined)
+		return res.status(422).send("AccountUID and/or 1+ FileUIDs are required!");
+
+	console.log(`\nGET ALL JOURNAL called`);
 
 
-	var fileWhere = (data.fileuid.length == 0) ? "" : `AND fileuid in (${data.fileuid.map(item => "'"+item+"'")}) `;
-	var sql = `SELECT journalid, fileuid, accountuid, changes, changetime FROM journal `+
-		`WHERE journalid > ${data.journalid} AND accountuid = '${data.accountuid}' ${fileWhere}AND deviceuid != '${data.deviceuid}';`;
+	var sql = `SELECT * FROM ( `
+	sql += `SELECT journalid, fileuid, accountuid, changes, changetime `
+	sql += `FROM journal `
+	sql += `WHERE journalid > ${data.journalid} AND deviceuid != '${data.deviceuid}' `
+	sql += (data.accountuid == undefined) ? "" : `AND accountuid = '${data.accountuid}' `;
+	sql += (data.fileuid == undefined) ? "" : `AND fileuid in (${data.fileuid.map(item => "'"+item+"'")}) `;
+	sql += `ORDER BY journalid DESC `
+	sql += `LIMIT 50 ) subquery `
+	sql += `ORDER BY journalid ASC;`;
 
 	(async () => {
 		const client = await POOL.connect();
@@ -158,15 +170,19 @@ router.post('/latest/:journalid', journalValidations, function(req, res, next) {
 		return res.status(422).send({ errors: validationResult(req).array() });
 	}
 	const data = matchedData(req);
+	if(data.fileuid == undefined && data.accountuid == undefined)
+		return res.status(422).send("AccountUID and/or 1+ FileUIDs are required!");
+
 	console.log(`\nGET ALL JOURNAL FOR called with start=${data.journalid}, accountuid='${data.accountuid}'`);
 
 
-	var fileWhere = (data.fileuid.length == 0) ? "" : `AND fileuid in (${data.fileuid.map(item => "'"+item+"'")}) `;
-	var sql = `SELECT * FROM ( `+
-		`SELECT DISTINCT ON (fileuid) journalid, fileuid, accountuid, changes, changetime FROM journal `+
-		`WHERE journalid > ${data.journalid} AND accountuid = '${data.accountuid}' ${fileWhere}AND deviceuid != '${data.deviceuid}' `+
-		`ORDER BY fileuid, journalid DESC `+
-	`) subquery ORDER BY journalid;`;
+	var sql = `SELECT * FROM ( `
+	sql += `SELECT DISTINCT ON (fileuid) journalid, fileuid, accountuid, changes, changetime FROM journal `
+	sql += `WHERE journalid > ${data.journalid} AND deviceuid != '${data.deviceuid}' `
+	sql += (data.accountuid == undefined) ? "" : `AND accountuid = '${data.accountuid}' `;
+	sql += (data.fileuid == undefined) ? "" : `AND fileuid in (${data.fileuid.map(item => "'"+item+"'")}) `;
+	sql += `ORDER BY fileuid, journalid DESC `
+	sql += `) subquery ORDER BY journalid;`;
 
 
 	(async () => {
