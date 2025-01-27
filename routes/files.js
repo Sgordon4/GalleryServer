@@ -229,7 +229,7 @@ router.put('/content', contentValidations, async function(req, res, next) {
 				changetime: fileProps.changetime,
 				modifytime: fileProps.modifytime
 			};
-			putJournal(client, fileProps.fileuid, fileProps.accountuid, deviceUID, JSON.stringify(changes), fileProps.changetime);
+			putJournal(client, fileUID, accountUID, deviceUID, JSON.stringify(changes), fileProps.changetime);
 
 
 			return res.status(200).send(fileProps);
@@ -309,7 +309,7 @@ router.put('/attributes', attributeValidations, async function(req, res, next) {
 				attrhash: fileProps.attrhash,
 				changetime: fileProps.changetime,
 			};
-			putJournal(client, fileProps.fileuid, fileProps.accountuid, deviceUID, JSON.stringify(changes), fileProps.changetime);
+			putJournal(client, fileUID, accountUID, deviceUID, JSON.stringify(changes), fileProps.changetime);
 
 
 			return res.status(200).send(fileProps);
@@ -383,7 +383,7 @@ router.put('/timestamps', timestampValidations, async function(req, res, next) {
 			for(const key of Object.keys(data)) {
 				changes[key] = fileProps[key];
 			};
-			putJournal(client, fileProps.fileuid, fileProps.accountuid, deviceUID, JSON.stringify(changes), fileProps.changetime);
+			putJournal(client, fileUID, accountUID, deviceUID, JSON.stringify(changes), fileProps.changetime);
 
 
 			return res.status(200).send(fileProps);
@@ -444,7 +444,7 @@ router.delete('/', deleteValidations, async function(req, res, next) {
 			//Add an entry to the Journal with the new file information
 			const fileProps = ret.rows[0];
 			const changes = { isdeleted: true };
-			putJournal(client, fileProps.fileuid, fileProps.accountuid, deviceUID, JSON.stringify(changes), fileProps.changetime);
+			putJournal(client, fileUID, accountUID, deviceUID, JSON.stringify(changes), fileProps.changetime);
 
 
 			return res.status(200).send(fileProps);
