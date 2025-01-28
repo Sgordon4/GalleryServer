@@ -33,7 +33,7 @@ router.get('/:id', async function(req, res, next) {
 
 
 	var sql =
-	`SELECT fileuid, accountuid, isdir, islink, filesize, filehash,
+	`SELECT fileuid, accountuid, isdir, islink, checksum, filesize,
 	userattr, attrhash, changetime, modifytime, accesstime, createtime FROM file
 	WHERE isdeleted=false AND fileuid = '${fileUID}';`;
 
@@ -144,7 +144,7 @@ router.put('/create', createValidations, async function(req, res, next) {
 				changetime: fileProps.changetime,
 				createtime: fileProps.createtime
 			};
-			putJournal(client, fileProps.fileuid, fileProps.accountuid, deviceUID, JSON.stringify(changes), fileProps.changetime);
+			putJournal(client, data.fileuid, data.accountuid, deviceUID, JSON.stringify(changes), fileProps.changetime);
 
 
 			return res.status(201).send(fileProps);
@@ -406,7 +406,7 @@ const deleteValidations = [fileUIDCheck(), accountUIDCheck(), deviceUIDCheck()]
 router.delete('/', deleteValidations, async function(req, res, next) {
 	console.log(`\nDELETE FILE called`);
 	if(!validationResult(req).isEmpty()) {
-		console.log("Body data has issues, cannot update timestamps!");
+		console.log("Body data has issues, cannot delete file!");
 		return res.status(422).send({ errors: validationResult(req).array() });
 	}
 
@@ -466,7 +466,7 @@ router.delete('/', deleteValidations, async function(req, res, next) {
 
 async function putJournal(client, fileUID, accountUID, deviceUID, changes, changetime) {
 	var sql = `INSERT INTO journal (fileUID, accountUID, deviceUID, changes, changetime) `;
-	sql += `VALUES ('${fileUID}', '${accountUID}', '${deviceUID}', '${changes}', ${changetime}) `;
+	sql += `VALUES (${fileUID}, ${accountUID}, '${deviceUID}', '${changes}', ${changetime}) `;
 	sql += `RETURNING *;`;
 
 	console.log("Creating journal with sql -");
