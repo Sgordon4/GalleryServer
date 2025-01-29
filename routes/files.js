@@ -107,14 +107,10 @@ router.put('/create', createValidations, async function(req, res, next) {
 
 	const keys = Object.keys(data);
 	const vals = Object.values(data);
-
-
-
 	var sql = `INSERT INTO file (${keys.join(", ")}) VALUES (${vals.join(", ")}) `;
 
 	//Replace the file if it was deleted. We 'delete' a file by setting isdeleted=true and hiding it.
-	keys.push("isdeleted");
-	vals.push("false");
+	data["isdeleted"] = false;
 
 	const joined = Object.entries(data).map(item => item.join(" = ")).join(", ");
 	sql += `ON CONFLICT (fileuid) DO UPDATE SET ${joined} `;

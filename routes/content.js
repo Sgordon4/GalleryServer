@@ -13,7 +13,7 @@ const {IBMCOS, IBMCOSBucket} = require('#root/storage/IBMCOS');
 //Get a presigned GET url to access the content
 router.get('/downloadurl/:key', async function(req, res, next) {
 	const key = req.params.key;
-	console.log(`\nGET CONTENT called with key='${key}'`);
+	console.log(`\nCREATE CONTENT DOWNLOAD URL called with key='${key}'`);
 
 	console.log(`Generating signed get url...`);
 	IBMCOS.getSignedUrlPromise('getObject', { 
@@ -36,7 +36,7 @@ router.get('/downloadurl/:key', async function(req, res, next) {
 //Get a presigned PUT url to upload the content itself
 router.get('/uploadurl/:key', async function(req, res, next) {
 	const key = req.params.key;
-	console.log(`\nPUT CONTENT URL called with key='${key}'`);
+	console.log(`\nCREATE CONTENT UPLOAD URL called with key='${key}'`);
 
 	console.log(`Generating signed put url...`);
 	IBMCOS.getSignedUrlPromise('putObject', { 
