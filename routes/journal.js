@@ -35,7 +35,7 @@ router.get('/longpoll/:startid', function(req, res, next) {
 
 		
 	//Only include the account where clause if there are any accounts sent over in query params
-	const accSql = "";
+	var accSql = "";
 	if(accountUIDs != null)
 		accSql = ` AND accountuid in ('${accountUIDs}')`;
 
